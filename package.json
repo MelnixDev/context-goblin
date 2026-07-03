@@ -1,0 +1,38 @@
+{
+  "name": "context-goblin",
+  "version": "0.1.0-alpha.0",
+  "description": "OpenCode plugin that generates a compact, safe project context cache.",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:opencode": "bash scripts/smoke-opencode.sh",
+    "benchmark": "tsx scripts/benchmark-context-goblin.ts",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "context"
+  ],
+  "author": "Volodymyr Melnychuk",
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.17.13"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

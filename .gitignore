@@ -1,0 +1,10 @@
+node_modules/
+dist/
+benchmark-results/
+.opencode/cache/
+*.tgz
+
+!tests/fixtures/large-repo/node_modules/
+!tests/fixtures/large-repo/node_modules/**
+!tests/fixtures/large-repo/dist/
+!tests/fixtures/large-repo/dist/**
