@@ -164,6 +164,36 @@ context_goblin_read
 
 It also verifies that the cache files exist, required headings are present, React/Vite/TypeScript are detected, the cache stays compact, and fake secrets do not leak.
 
+## GPT-5.5 example
+
+Run a publishable proof check against a clean synthetic React/Vite/TypeScript fixture with `openai/gpt-5.5`:
+
+```bash
+OPENCODE_MODEL=openai/gpt-5.5 npm run check:opencode:gpt55
+```
+
+Output:
+
+```txt
+examples/gpt-5.5-cache-check.md
+```
+
+Latest local result:
+
+```txt
+Model: openai/gpt-5.5
+OpenCode completed: true
+Result: pass
+Tool calls: context_goblin_status, context_goblin_refresh, context_goblin_read
+Cache size: 1063 bytes
+Secret leakage: none detected
+Input tokens: 7752
+Output tokens: 222
+Cache read tokens: 17920
+```
+
+The generated report is sanitized and safe to commit. Raw OpenCode JSON events are written to `examples/gpt-5.5-cache-check.events.jsonl` and ignored by git.
+
 ## Safety model
 
 Context Goblin should never cache secrets or generated dependency files.

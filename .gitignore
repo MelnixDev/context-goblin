@@ -3,6 +3,7 @@ dist/
 benchmark-results/
 .opencode/cache/
 *.tgz
+examples/*.events.jsonl
 
 !tests/fixtures/large-repo/node_modules/
 !tests/fixtures/large-repo/node_modules/**
