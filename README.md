@@ -119,6 +119,7 @@ Result: pass
 Baseline direct file reads: 5
 Context Goblin built-in file reads: 0
 File-read reduction: 100%
+Input-token reduction: 72%
 Context Goblin cache size: 1045 bytes
 Secret leakage: none detected
 ```

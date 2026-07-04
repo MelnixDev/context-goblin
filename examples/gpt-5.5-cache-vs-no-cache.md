@@ -1,9 +1,9 @@
 # GPT-5.5 Context Goblin Cache vs No Cache
 
-Generated: 2026-07-04T21:34:42.294Z
+Generated: 2026-07-04T21:41:35.902Z
 Model: openai/gpt-5.5
 OpenCode version: 1.17.13
-Context Goblin version: 0.1.1-alpha.0
+Context Goblin version: 0.1.1-alpha.1
 
 ## Fixture
 
@@ -35,15 +35,15 @@ Call context_goblin_status. If missing or stale, call context_goblin_refresh. Th
 
 ## Baseline: No Cache
 
-- Duration: 28000ms
+- Duration: 39000ms
 - Tool calls: 5
 - Unique files read: 5
-- Input tokens: 7526
-- Output tokens: 514
-- Reasoning tokens: 24
+- Input tokens: 7504
+- Output tokens: 486
+- Reasoning tokens: 26
 - Cache read tokens: 5632
 - Cache write tokens: 0
-- Total event tokens: 13696
+- Total event tokens: 13648
 - Cost: 0
 
 ### Baseline Tool Counts
@@ -61,12 +61,12 @@ Call context_goblin_status. If missing or stale, call context_goblin_refresh. Th
 ### Baseline Final Answer
 
 ```txt
-Stack is a minimal Vite + React + TypeScript app with strict TS and `react-jsx`; package manager is not identifiable from `package.json` alone because no lockfile was requested/read. Commands are `vite` for dev, `tsc && vite build` for build, and `vitest` for test. Entry point appears to be `src/main.tsx`, which currently only re-exports `App` from `src/App.tsx`. Safety exclusions I would apply are `.env*`, secrets, credentials, lockfile churn unless needed, generated build output like `dist/`, and dependencies like `node_modules/`. Smallest files to inspect next would be `index.html`, any lockfile (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `bun.lockb`), and any tiny test or config files present.
+Stack is React + TypeScript + Vite with Vitest; package manager is not identifiable from the requested files because no lockfile was read, so use the repo’s existing lockfile if present; commands are `vite` via `npm run dev`, `tsc && vite build` via `npm run build`, and `vitest` via `npm test`; entry point is `src/main.tsx`, which re-exports `App` from `src/App.tsx`; safety exclusions: do not read `.env`, secrets, generated output like `dist`, dependency folders like `node_modules`, or unrelated dotfiles unless needed; smallest next files to inspect would be `index.html`, any lockfile, and test files matching `*.test.*` or `*.spec.*`.
 ```
 
 ## Context Goblin: Cache First
 
-- Duration: 25000ms
+- Duration: 74000ms
 - Tool calls: 3
 - Unique files read through built-in tools: 0
 - context_goblin_status called: yes
@@ -77,12 +77,12 @@ Stack is a minimal Vite + React + TypeScript app with strict TS and `react-jsx`;
 - Cache size: 1045 bytes
 - Cache lines: 64
 - Secret leakage: none detected
-- Input tokens: 7726
+- Input tokens: 2074
 - Output tokens: 172
 - Reasoning tokens: 0
-- Cache read tokens: 17920
+- Cache read tokens: 23552
 - Cache write tokens: 0
-- Total event tokens: 25818
+- Total event tokens: 25798
 - Cost: 0
 
 ### Context Goblin Tool Counts
@@ -98,13 +98,13 @@ Stack is a minimal Vite + React + TypeScript app with strict TS and `react-jsx`;
 ### Context Goblin Final Answer
 
 ```txt
-Stack: TypeScript React app using Vite/Node.js; package manager needs input; commands are `vite`, `tsc && vite build`, and `vitest`; entry point is `src/main.tsx`; safety exclusions include env/secret/key files plus `node_modules/**`, `.git/**`, build outputs, coverage, and `.opencode/cache/context-goblin/**`; smallest files to inspect next are `package.json`, `src/App.tsx`, `src/main.tsx`, `vite.config.ts`, and `tsconfig.json`.
+Stack: TypeScript with React, Vite, and Node.js; package manager: needs input; commands: `vite`, `tsc && vite build`, `vitest`; entry point: `src/main.tsx`; safety exclusions include env/secrets, keys, `node_modules/**`, `.git/**`, build outputs, coverage, and `.opencode/cache/context-goblin/**`; smallest files to inspect next: `package.json`, `src/main.tsx`, `src/App.tsx`, `vite.config.ts`, `tsconfig.json`.
 ```
 
 ## Comparison
 
 - File-read reduction: 100%
-- Input-token change: -3%
+- Input-token change: 72%
 - Baseline read files directly: yes
 - Context Goblin started from cache: yes
 - Cache stayed <= 25 KB: yes
