@@ -126,6 +126,44 @@ Secret leakage: none detected
 
 Raw OpenCode event logs are written to `examples/*.events.jsonl` and ignored by git.
 
+## Free Model A/B Test
+
+Run the same no-cache vs cache comparison across free OpenCode models:
+
+```bash
+npm run check:opencode:free-models
+```
+
+Report:
+
+```txt
+examples/free-models-cache-ab.md
+```
+
+Default models:
+
+```txt
+opencode/deepseek-v4-flash-free
+opencode/mimo-v2.5-free
+opencode/nemotron-3-ultra-free
+opencode/north-mini-code-free
+```
+
+Override the model list:
+
+```bash
+OPENCODE_MODELS="opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free" npm run check:opencode:free-models
+```
+
+Latest free-model A/B result:
+
+| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Cache Size | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| opencode/deepseek-v4-flash-free | 5 | 0 | 100% | 1% | 1045 | pass |
+| opencode/mimo-v2.5-free | 5 | 0 | 100% | 0% | 1045 | pass |
+| opencode/nemotron-3-ultra-free | 5 | 0 | 100% | 19% | 1045 | pass |
+| opencode/north-mini-code-free | 5 | 0 | 100% | 44% | 1045 | pass |
+
 ## Benchmark
 
 ```bash

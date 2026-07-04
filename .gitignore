@@ -4,6 +4,7 @@ benchmark-results/
 .opencode/cache/
 *.tgz
 examples/*.events.jsonl
+examples/*.metadata.tsv
 
 !tests/fixtures/large-repo/node_modules/
 !tests/fixtures/large-repo/node_modules/**
