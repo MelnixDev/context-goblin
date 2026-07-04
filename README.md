@@ -43,6 +43,24 @@ After installation, users will be able to add the plugin to `opencode.json`:
 }
 ```
 
+For local development, build the package and add a project or global OpenCode plugin shim:
+
+```js
+export { default, ContextGoblin } from "file:///absolute/path/to/context-goblin/dist/src/index.js"
+```
+
+Project-level shim path:
+
+```txt
+.opencode/plugins/context-goblin.js
+```
+
+Global shim path:
+
+```txt
+~/.config/opencode/plugins/context-goblin.js
+```
+
 ## Tools
 
 Context Goblin exposes these OpenCode tools:

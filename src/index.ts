@@ -13,6 +13,12 @@ export { hashProjectState } from "./hashProjectState.js"
 export { isDeniedPath, redactSecrets } from "./security.js"
 export { truncateMarkdown } from "./truncateMarkdown.js"
 
+function projectRoot(context: { directory?: string; worktree?: string }): string {
+  if (context.directory) return context.directory
+  if (context.worktree && context.worktree !== "/") return context.worktree
+  return process.cwd()
+}
+
 export const ContextGoblin: Plugin = async () => {
   return {
     tool: {
@@ -20,7 +26,7 @@ export const ContextGoblin: Plugin = async () => {
         description: "Check whether the Context Goblin project cache exists and is fresh.",
         args: {},
         async execute(_args, context) {
-          return JSON.stringify(await cacheStatus(context.worktree), null, 2)
+          return JSON.stringify(await cacheStatus(projectRoot(context)), null, 2)
         },
       }),
       context_goblin_refresh: tool({
@@ -29,7 +35,7 @@ export const ContextGoblin: Plugin = async () => {
           maxCacheKb: tool.schema.number().optional(),
         },
         async execute(args, context) {
-          const state = await generateProjectContext({ rootDir: context.worktree, maxCacheKb: args.maxCacheKb })
+          const state = await generateProjectContext({ rootDir: projectRoot(context), maxCacheKb: args.maxCacheKb })
           return JSON.stringify({ ok: true, state }, null, 2)
         },
       }),
@@ -37,7 +43,7 @@ export const ContextGoblin: Plugin = async () => {
         description: "Read the compact Context Goblin project cache.",
         args: {},
         async execute(_args, context) {
-          return await fs.readFile(`${context.worktree}/${CACHE_MARKDOWN}`, "utf8")
+          return await fs.readFile(`${projectRoot(context)}/${CACHE_MARKDOWN}`, "utf8")
         },
       }),
     },
