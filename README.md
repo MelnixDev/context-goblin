@@ -97,10 +97,13 @@ The benchmark reports:
 - tool calls
 - cache size
 - secret leakage check
-- optional token/cost stats when available
+- input/output/cache token totals from OpenCode JSON events
+- cost and duration when OpenCode reports them
 ```
 
-The goal is not to fake exact token savings. The goal is to prove that the agent reads fewer files and starts from a compact cache.
+The baseline run uses an isolated empty `OPENCODE_CONFIG_DIR` so globally installed plugins cannot affect the control run. The Context Goblin run loads the plugin and instructs the agent to call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before broad scanning.
+
+The goal is not to fake exact token savings. Token usage varies by model, provider, and cache state. The benchmark proves the agent starts from a compact cache, avoids denied files, reports token/cost evidence, and reads fewer files when the model behavior allows a direct comparison.
 
 Run:
 
@@ -108,11 +111,40 @@ Run:
 npm run benchmark
 ```
 
+If your provider is slow, increase the per-run timeout:
+
+```bash
+CONTEXT_GOBLIN_BENCHMARK_TIMEOUT_MS=300000 npm run benchmark
+```
+
 Output:
 
 ```txt
 benchmark-results/context-goblin-benchmark.md
 ```
+
+Raw OpenCode JSON event logs are also saved:
+
+```txt
+benchmark-results/baseline-events.jsonl
+benchmark-results/goblin-events.jsonl
+```
+
+The report includes:
+
+```txt
+- baseline vs Context Goblin tool counts
+- built-in read/bash/glob/grep calls
+- unique files read
+- Context Goblin tool usage
+- cache size and line count
+- input/output/reasoning/cache token totals
+- cost and duration
+- secret leakage and denied-file checks
+- pass/fail summary
+```
+
+If OpenCode or the provider stalls, the report still gets written with diagnostics instead of silently hanging.
 
 ## Real OpenCode check
 
