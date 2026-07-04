@@ -1,6 +1,6 @@
 {
   "name": "context-goblin",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0",
   "description": "OpenCode plugin that generates a compact, safe project context cache.",
   "type": "module",
   "main": "dist/src/index.js",
