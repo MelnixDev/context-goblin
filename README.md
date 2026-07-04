@@ -114,6 +114,24 @@ Output:
 benchmark-results/context-goblin-benchmark.md
 ```
 
+## Real OpenCode check
+
+Run a real non-interactive OpenCode workflow that forces the agent to call Context Goblin before summarizing a fixture project:
+
+```bash
+npm run check:opencode
+```
+
+The check asserts that OpenCode calls:
+
+```txt
+context_goblin_status
+context_goblin_refresh
+context_goblin_read
+```
+
+It also verifies that the cache files exist, required headings are present, React/Vite/TypeScript are detected, the cache stays compact, and fake secrets do not leak.
+
 ## Safety model
 
 Context Goblin should never cache secrets or generated dependency files.

@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:opencode": "bash scripts/smoke-opencode.sh",
+    "check:opencode": "bash scripts/real-opencode-check.sh",
     "benchmark": "tsx scripts/benchmark-context-goblin.ts",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
