@@ -1,6 +1,6 @@
 # Complex Task Context Goblin A/B Report
 
-Generated: 2026-07-09T15:28:07.403Z
+Generated: 2026-07-09T16:03:05.302Z
 OpenCode version: 1.17.17
 Context Goblin version: 0.1.1-alpha.3
 Model group: all
@@ -11,16 +11,16 @@ Plan adding a "Save for later" feature to a realistic React/Vite cart and catalo
 
 ## Summary
 
-| Model | Baseline OK | Goblin OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Quality | Cache Size | Secret Leak | Result |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| openai/gpt-5.5 | yes | yes | 8 | 8 | 0% | -51% | 6/6 | 1410 | pass | pass |
-| opencode/deepseek-v4-flash-free | yes | yes | 8 | 8 | 0% | -12% | 6/6 | 1410 | pass | pass |
-| opencode/mimo-v2.5-free | yes | yes | 8 | 5 | 38% | -18% | 6/6 | 1410 | pass | pass |
-| opencode/nemotron-3-ultra-free | yes | no | 8 | 1 | 88% | -381% | 1/6 | 1410 | pass | fail |
-| opencode/north-mini-code-free | yes | yes | 8 | 2 | 75% | -51% | 4/6 | 1410 | pass | pass |
-| openai/gpt-5.5-fast | yes | no | 8 | 10 | -25% | -378% | 6/6 | 1410 | pass | fail |
-| opencode/gpt-5.5 | no | no | 0 | 0 | n/a | n/a | 0/6 | 0 | pass | fail |
-| opencode/gpt-5.4-mini | no | no | 0 | 0 | n/a | n/a | 0/6 | 0 | pass | fail |
+| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| openai/gpt-5.5 | yes | yes | yes | 8 | 8 | 0% | -51% | 6/6 | 1410 | pass | pass |
+| opencode/deepseek-v4-flash-free | yes | yes | yes | 8 | 8 | 0% | -12% | 6/6 | 1410 | pass | pass |
+| opencode/mimo-v2.5-free | yes | yes | yes | 8 | 5 | 38% | -18% | 6/6 | 1410 | pass | pass |
+| opencode/nemotron-3-ultra-free | yes | yes | no | 8 | 1 | 88% | -381% | 1/6 | 1410 | pass | fail |
+| opencode/north-mini-code-free | yes | yes | yes | 8 | 2 | 75% | -51% | 4/6 | 1410 | pass | pass |
+| openai/gpt-5.5-fast | yes | no | yes | 8 | 10 | -25% | -378% | 6/6 | 1410 | pass | fail |
+| opencode/gpt-5.5 | no | no | no | 0 | 0 | n/a | n/a | 0/6 | 0 | pass | error |
+| opencode/gpt-5.4-mini | no | no | no | 0 | 0 | n/a | n/a | 0/6 | 0 | pass | error |
 
 ## openai/gpt-5.5
 
@@ -28,15 +28,20 @@ Plan adding a "Save for later" feature to a realistic React/Vite cart and catalo
 
 - Baseline completed: true
 - Context Goblin completed and validated: true
+- Tool use OK: true
+- Answer OK: true
+- Result: pass
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 8
 - File-read reduction: 0%
-- Input-token change: -51%
-- Total-token change: -306%
+- Input-token reduction: -51%
+- Total-token reduction: -306%
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -63,6 +68,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -172,6 +181,10 @@ Files read:
 - src/routes.tsx
 - tests/cartStore.test.ts
 
+Errors:
+
+- none
+
 Final answer:
 
 ```txt
@@ -257,15 +270,20 @@ Optional only if product listing needs a “restore saved item” surface outsid
 
 - Baseline completed: true
 - Context Goblin completed and validated: true
+- Tool use OK: true
+- Answer OK: true
+- Result: pass
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 8
 - File-read reduction: 0%
-- Input-token change: -12%
-- Total-token change: -239%
+- Input-token reduction: -12%
+- Total-token reduction: -239%
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -292,6 +310,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -380,6 +402,10 @@ Files read:
 - src/features/catalog/ProductCard.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -470,15 +496,20 @@ No `.env` files were read. No files were modified.
 
 - Baseline completed: true
 - Context Goblin completed and validated: true
+- Tool use OK: true
+- Answer OK: true
+- Result: pass
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 5
 - File-read reduction: 38%
-- Input-token change: -18%
-- Total-token change: -343%
+- Input-token reduction: -18%
+- Total-token reduction: -343%
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -505,6 +536,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -599,6 +634,10 @@ Files read:
 - src/routes.tsx
 - tests/cartStore.test.ts
 
+Errors:
+
+- none
+
 Final answer:
 
 ```txt
@@ -682,15 +721,20 @@ All cart behavior changes require tests. New tests go in `tests/cartStore.test.t
 
 - Baseline completed: true
 - Context Goblin completed and validated: false
+- Tool use OK: true
+- Answer OK: false
+- Result: fail
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 1
 - File-read reduction: 88%
-- Input-token change: -381%
-- Total-token change: -698%
+- Input-token reduction: -381%
+- Total-token reduction: -698%
 - Quality score: 1/6
 - Quality hits: tests
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -717,6 +761,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -757,6 +805,10 @@ Files read:
 
 - tests/cartStore.test.ts
 
+Errors:
+
+- none
+
 Final answer:
 
 ```txt
@@ -776,15 +828,20 @@ All tests pass and the build completes. Added 7 comprehensive tests for cart beh
 
 - Baseline completed: true
 - Context Goblin completed and validated: true
+- Tool use OK: true
+- Answer OK: true
+- Result: pass
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 2
 - File-read reduction: 75%
-- Input-token change: -51%
-- Total-token change: -50%
+- Input-token reduction: -51%
+- Total-token reduction: -50%
 - Quality score: 4/6
 - Quality hits: cartStore.ts, tests, risks, safety exclusions
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -812,6 +869,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -902,6 +963,10 @@ Files read:
 - src/features/cart/cartStore.ts
 - tests/cartStore.test.ts
 
+Errors:
+
+- none
+
 Final answer:
 
 ```txt
@@ -945,15 +1010,20 @@ Safety exclusions:
 
 - Baseline completed: true
 - Context Goblin completed and validated: false
+- Tool use OK: false
+- Answer OK: true
+- Result: fail
 - Baseline direct file reads: 8
 - Context Goblin built-in file reads: 10
 - File-read reduction: -25%
-- Input-token change: -378%
-- Total-token change: -256%
+- Input-token reduction: -378%
+- Total-token reduction: -256%
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Cache size: 1410 bytes
 - Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
 
 ### Baseline
 
@@ -980,6 +1050,10 @@ Files read:
 - src/features/catalog/ProductList.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -1082,6 +1156,10 @@ Files read:
 - src/main.tsx
 - src/routes.tsx
 - tests/cartStore.test.ts
+
+Errors:
+
+- none
 
 Final answer:
 
@@ -1200,15 +1278,20 @@ No files were modified.
 
 - Baseline completed: false
 - Context Goblin completed and validated: false
+- Tool use OK: false
+- Answer OK: false
+- Result: error
 - Baseline direct file reads: 0
 - Context Goblin built-in file reads: 0
 - File-read reduction: n/a
-- Input-token change: n/a
-- Total-token change: n/a
+- Input-token reduction: n/a
+- Total-token reduction: n/a
 - Quality score: 0/6
 - Quality hits: none
 - Cache size: 0 bytes
 - Secret leakage: none detected
+- Baseline errors: 1
+- Context Goblin errors: 1
 
 ### Baseline
 
@@ -1228,6 +1311,10 @@ Tool counts:
 Files read:
 
 - none observed
+
+Errors:
+
+- APIError: HTTP 401: No payment method. Add a payment method here: https://opencode.ai/workspace/<workspace>/billing
 
 Final answer:
 
@@ -1257,6 +1344,10 @@ Files read:
 
 - none observed
 
+Errors:
+
+- APIError: HTTP 401: No payment method. Add a payment method here: https://opencode.ai/workspace/<workspace>/billing
+
 Final answer:
 
 ```txt
@@ -1269,15 +1360,20 @@ No final text captured.
 
 - Baseline completed: false
 - Context Goblin completed and validated: false
+- Tool use OK: false
+- Answer OK: false
+- Result: error
 - Baseline direct file reads: 0
 - Context Goblin built-in file reads: 0
 - File-read reduction: n/a
-- Input-token change: n/a
-- Total-token change: n/a
+- Input-token reduction: n/a
+- Total-token reduction: n/a
 - Quality score: 0/6
 - Quality hits: none
 - Cache size: 0 bytes
 - Secret leakage: none detected
+- Baseline errors: 1
+- Context Goblin errors: 1
 
 ### Baseline
 
@@ -1297,6 +1393,10 @@ Tool counts:
 Files read:
 
 - none observed
+
+Errors:
+
+- APIError: HTTP 401: No payment method. Add a payment method here: https://opencode.ai/workspace/<workspace>/billing
 
 Final answer:
 
@@ -1325,6 +1425,10 @@ Tool counts:
 Files read:
 
 - none observed
+
+Errors:
+
+- APIError: HTTP 401: No payment method. Add a payment method here: https://opencode.ai/workspace/<workspace>/billing
 
 Final answer:
 

@@ -30,9 +30,12 @@ fi
 report_path="$repo_root/examples/model-complex-task-ab-report.md"
 metadata_path="$repo_root/examples/model-complex-task-ab.metadata.tsv"
 
-npm run build
 mkdir -p "$repo_root/examples"
-: > "$metadata_path"
+
+if [ "${REUSE_EXISTING:-0}" != "1" ]; then
+  npm run build
+  : > "$metadata_path"
+fi
 
 create_fixture() {
   local root="$1"
@@ -172,33 +175,35 @@ safe_name() {
 baseline_prompt='No Context Goblin is available. Use normal OpenCode tools to inspect the smallest files needed to plan adding a "Save for later" feature to the cart. Read package.json, src/App.tsx, src/routes.tsx, src/features/cart/cartStore.ts, src/features/cart/CartDrawer.tsx, src/features/catalog/ProductCard.tsx, src/features/catalog/ProductList.tsx, and tests/cartStore.test.ts. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
 goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Then inspect only the smallest extra files needed to plan adding a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
 
-for model in $models; do
-  name="$(safe_name "$model")"
-  tmpdir="$(mktemp -d)"
-  baseline_dir="$tmpdir/baseline"
-  goblin_dir="$tmpdir/goblin"
-  mkdir -p "$baseline_dir" "$goblin_dir/.opencode/plugins"
-  create_fixture "$baseline_dir"
-  create_fixture "$goblin_dir"
-  cat > "$goblin_dir/.opencode/plugins/context-goblin.js" <<EOF
+if [ "${REUSE_EXISTING:-0}" != "1" ]; then
+  for model in $models; do
+    name="$(safe_name "$model")"
+    tmpdir="$(mktemp -d)"
+    baseline_dir="$tmpdir/baseline"
+    goblin_dir="$tmpdir/goblin"
+    mkdir -p "$baseline_dir" "$goblin_dir/.opencode/plugins"
+    create_fixture "$baseline_dir"
+    create_fixture "$goblin_dir"
+    cat > "$goblin_dir/.opencode/plugins/context-goblin.js" <<EOF
 export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
 EOF
 
-  baseline_raw="$repo_root/examples/model-complex-task-ab.$name.baseline.events.jsonl"
-  goblin_raw="$repo_root/examples/model-complex-task-ab.$name.goblin.events.jsonl"
-  baseline_stderr="$tmpdir/baseline.stderr"
-  goblin_stderr="$tmpdir/goblin.stderr"
+    baseline_raw="$repo_root/examples/model-complex-task-ab.$name.baseline.events.jsonl"
+    goblin_raw="$repo_root/examples/model-complex-task-ab.$name.goblin.events.jsonl"
+    baseline_stderr="$tmpdir/baseline.stderr"
+    goblin_stderr="$tmpdir/goblin.stderr"
 
-  echo "Running complex baseline: $model"
-  baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr")"
-  echo "Running complex Context Goblin: $model"
-  goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr")"
+    echo "Running complex baseline: $model"
+    baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr")"
+    echo "Running complex Context Goblin: $model"
+    goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr")"
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$model" "$baseline_dir" "$goblin_dir" "$baseline_raw" "$goblin_raw" \
-    "$baseline_stderr" "$goblin_stderr" "${baseline_result%%:*}" "${baseline_result##*:}" \
-    "${goblin_result%%:*}" "${goblin_result##*:}" "$name" >> "$metadata_path"
-done
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$model" "$baseline_dir" "$goblin_dir" "$baseline_raw" "$goblin_raw" \
+      "$baseline_stderr" "$goblin_stderr" "${baseline_result%%:*}" "${baseline_result##*:}" \
+      "${goblin_result%%:*}" "${goblin_result##*:}" "$name" >> "$metadata_path"
+  done
+fi
 
 OPENCODE_VERSION="$(opencode --version 2>/dev/null || printf 'not available')" \
 REPO_ROOT="$repo_root" \
@@ -227,11 +232,13 @@ function parseEvents(filePath, root) {
   const toolCounts = {}
   const files = new Set()
   const textParts = []
+  const errors = []
   let inputTokens = 0, outputTokens = 0, reasoningTokens = 0, cacheReadTokens = 0, cacheWriteTokens = 0, totalTokens = 0, cost = 0
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue
     try {
       const record = JSON.parse(line)
+      if (record.type === "error") errors.push(errorSummary(record.error))
       const part = record.part
       if (!part) continue
       if (part.type === "tool" && part.tool) {
@@ -250,7 +257,17 @@ function parseEvents(filePath, root) {
       cost += part.cost || 0
     } catch {}
   }
-  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
+  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", errors, inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
+}
+
+function errorSummary(error) {
+  if (!error) return "Unknown error"
+  const data = error.data || {}
+  const parts = []
+  if (error.name) parts.push(error.name)
+  if (data.statusCode) parts.push(`HTTP ${data.statusCode}`)
+  if (data.message) parts.push(data.message)
+  return parts.join(": ") || String(error)
 }
 
 function normalizeFile(root, value) {
@@ -283,10 +300,12 @@ function collectFiles(value, root, files) {
 }
 
 function sanitize(value, row) {
-  return String(value || "")
-    .replaceAll(row.baselineRoot, "<baseline-fixture>")
-    .replaceAll(row.goblinRoot, "<goblin-fixture>")
+  let text = String(value || "")
+  if (row.baselineRoot) text = text.replaceAll(row.baselineRoot, "<baseline-fixture>")
+  if (row.goblinRoot) text = text.replaceAll(row.goblinRoot, "<goblin-fixture>")
+  return text
     .replaceAll(repoRoot, "<repo>")
+    .replace(/https:\/\/opencode\.ai\/workspace\/[^\s)]+\/billing/g, "https://opencode.ai/workspace/<workspace>/billing")
     .replace(/super-secret[-\w]*/g, "[REDACTED]")
     .replace(/(API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\s\n]+)/g, "$1=[REDACTED]")
 }
@@ -303,6 +322,7 @@ function toolList(metrics) {
   return entries.length ? entries.map(([tool, count]) => `- ${tool}: ${count}`).join("\n") : "- none"
 }
 function fileList(files) { return files.length ? files.map((file) => `- ${file}`).join("\n") : "- none observed" }
+function errorList(errors) { return errors.length ? errors.map((error) => `- ${sanitize(error, { baselineRoot: "", goblinRoot: "" })}`).join("\n") : "- none" }
 
 const qualityChecks = [
   { label: "cartStore.ts", pattern: /cartStore\.ts|cartStore/i },
@@ -327,28 +347,38 @@ const results = rows.map((row) => {
   const secretLeakage = cache.includes("super-secret") || /(?:API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\[]\S+)/.test(cache)
   const cacheSize = Buffer.byteLength(cache)
   const q = quality(goblin.text)
-  const goblinOk = row.goblinExit === 0 && goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length && q.score >= 4
-  const baselineOk = row.baselineExit === 0
-  return { row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, quality: q, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
+  const baselineError = row.baselineExit !== 0 || baseline.errors.length > 0
+  const goblinError = row.goblinExit !== 0 || goblin.errors.length > 0
+  const toolUseOk = Boolean(goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
+  const answerOk = q.score >= 4
+  const baselineOk = !baselineError
+  const goblinOk = !goblinError && toolUseOk && answerOk
+  const result = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
+  return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality: q, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
 })
 
-const summaryRows = results.map(({ row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, quality, fileReduction, inputReduction }) => `| ${row.model} | ${yn(baselineOk)} | ${yn(goblinOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${baselineOk && goblinOk ? "pass" : "fail"} |`).join("\n")
+const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction }) => `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`).join("\n")
 
-const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
+const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
 
 ### Summary
 
 - Baseline completed: ${baselineOk}
 - Context Goblin completed and validated: ${Boolean(goblinOk)}
+- Tool use OK: ${toolUseOk}
+- Answer OK: ${answerOk}
+- Result: ${result}
 - Baseline direct file reads: ${baseline.files.length}
 - Context Goblin built-in file reads: ${goblin.files.length}
 - File-read reduction: ${fileReduction}
-- Input-token change: ${inputReduction}
-- Total-token change: ${totalReduction}
+- Input-token reduction: ${inputReduction}
+- Total-token reduction: ${totalReduction}
 - Quality score: ${quality.score}/6
 - Quality hits: ${quality.matched.length ? quality.matched.join(", ") : "none"}
 - Cache size: ${cacheSize} bytes
 - Secret leakage: ${secretLeakage ? "detected" : "none detected"}
+- Baseline errors: ${baseline.errors.length}
+- Context Goblin errors: ${goblin.errors.length}
 
 ### Baseline
 
@@ -368,6 +398,10 @@ ${toolList(baseline)}
 Files read:
 
 ${fileList(baseline.files)}
+
+Errors:
+
+${errorList(baseline.errors)}
 
 Final answer:
 
@@ -397,6 +431,10 @@ Files read:
 
 ${fileList(goblin.files)}
 
+Errors:
+
+${errorList(goblin.errors)}
+
 Final answer:
 
 \`\`\`txt
@@ -417,8 +455,8 @@ Plan adding a "Save for later" feature to a realistic React/Vite cart and catalo
 
 ## Summary
 
-| Model | Baseline OK | Goblin OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Quality | Cache Size | Secret Leak | Result |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 ${summaryRows}
 
 ${details}
@@ -427,5 +465,5 @@ ${details}
 fs.writeFileSync(process.env.REPORT_PATH, report)
 console.log(report)
 
-if (!results.some((result) => result.baselineOk && result.goblinOk)) process.exit(1)
+if (!results.some((result) => result.result === "pass")) process.exit(1)
 NODE

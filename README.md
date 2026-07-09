@@ -178,20 +178,20 @@ Report:
 examples/model-complex-task-ab-report.md
 ```
 
-The task asks each model to plan a "Save for later" cart feature in a synthetic React/Vite catalog/cart app. The report compares direct file reads, Context Goblin cache usage, token evidence, safety checks, and a 6-point answer-quality score.
+The task asks each model to plan a "Save for later" cart feature in a synthetic React/Vite catalog/cart app. The report compares direct file reads, Context Goblin cache usage, token evidence, safety checks, and a 6-point answer-quality score. Negative token reductions mean the Context Goblin run used more input tokens than the baseline.
 
 Latest complex-task result:
 
-| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Quality | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 8 | 8 | 0% | -51% | 6/6 | pass |
-| opencode/deepseek-v4-flash-free | 8 | 8 | 0% | -12% | 6/6 | pass |
-| opencode/mimo-v2.5-free | 8 | 5 | 38% | -18% | 6/6 | pass |
-| opencode/nemotron-3-ultra-free | 8 | 1 | 88% | -381% | 1/6 | fail |
-| opencode/north-mini-code-free | 8 | 2 | 75% | -51% | 4/6 | pass |
-| openai/gpt-5.5-fast | 8 | 10 | -25% | -378% | 6/6 | fail |
-| opencode/gpt-5.5 | 0 | 0 | n/a | n/a | 0/6 | fail |
-| opencode/gpt-5.4-mini | 0 | 0 | n/a | n/a | 0/6 | fail |
+| Model | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Result |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| openai/gpt-5.5 | yes | yes | 8 | 8 | 0% | -51% | 6/6 | pass |
+| opencode/deepseek-v4-flash-free | yes | yes | 8 | 8 | 0% | -12% | 6/6 | pass |
+| opencode/mimo-v2.5-free | yes | yes | 8 | 5 | 38% | -18% | 6/6 | pass |
+| opencode/nemotron-3-ultra-free | yes | no | 8 | 1 | 88% | -381% | 1/6 | fail |
+| opencode/north-mini-code-free | yes | yes | 8 | 2 | 75% | -51% | 4/6 | pass |
+| openai/gpt-5.5-fast | no | yes | 8 | 10 | -25% | -378% | 6/6 | fail |
+| opencode/gpt-5.5 | no | no | 0 | 0 | n/a | n/a | 0/6 | error |
+| opencode/gpt-5.4-mini | no | no | 0 | 0 | n/a | n/a | 0/6 | error |
 
 ## Benchmark
 
