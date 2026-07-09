@@ -164,6 +164,35 @@ Latest free-model A/B result:
 | opencode/nemotron-3-ultra-free | 5 | 0 | 100% | 19% | 1045 | pass |
 | opencode/north-mini-code-free | 5 | 0 | 100% | 44% | 1045 | pass |
 
+## Complex Task A/B Test
+
+Run a realistic planning task across standard, free, and other model groups:
+
+```bash
+MODEL_GROUP=all npm run check:models:complex
+```
+
+Report:
+
+```txt
+examples/model-complex-task-ab-report.md
+```
+
+The task asks each model to plan a "Save for later" cart feature in a synthetic React/Vite catalog/cart app. The report compares direct file reads, Context Goblin cache usage, token evidence, safety checks, and a 6-point answer-quality score.
+
+Latest complex-task result:
+
+| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Quality | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| openai/gpt-5.5 | 8 | 8 | 0% | -51% | 6/6 | pass |
+| opencode/deepseek-v4-flash-free | 8 | 8 | 0% | -12% | 6/6 | pass |
+| opencode/mimo-v2.5-free | 8 | 5 | 38% | -18% | 6/6 | pass |
+| opencode/nemotron-3-ultra-free | 8 | 1 | 88% | -381% | 1/6 | fail |
+| opencode/north-mini-code-free | 8 | 2 | 75% | -51% | 4/6 | pass |
+| openai/gpt-5.5-fast | 8 | 10 | -25% | -378% | 6/6 | fail |
+| opencode/gpt-5.5 | 0 | 0 | n/a | n/a | 0/6 | fail |
+| opencode/gpt-5.4-mini | 0 | 0 | n/a | n/a | 0/6 | fail |
+
 ## Benchmark
 
 ```bash
