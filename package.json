@@ -1,6 +1,6 @@
 {
   "name": "context-goblin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "OpenCode plugin for AI coding agents that caches safe repo context, code maps, and token-usage evidence.",
   "type": "module",
   "main": "dist/src/index.js",

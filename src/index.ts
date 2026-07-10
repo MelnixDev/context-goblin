@@ -23,14 +23,14 @@ export const ContextGoblin: Plugin = async () => {
   return {
     tool: {
       context_goblin_status: tool({
-        description: "Check whether the Context Goblin project cache exists and is fresh.",
+        description: "Start here before broad repository discovery. Check whether the Context Goblin project cache exists and is fresh; refresh stale or missing caches before reading many files.",
         args: {},
         async execute(_args, context) {
           return JSON.stringify(await cacheStatus(projectRoot(context)), null, 2)
         },
       }),
       context_goblin_refresh: tool({
-        description: "Regenerate the Context Goblin project cache safely.",
+        description: "Regenerate the safe Context Goblin project cache when status is missing or stale. After refresh, read the cache and call context_goblin_stats to report a short cache summary.",
         args: {
           maxCacheKb: tool.schema.number().optional(),
         },
@@ -40,14 +40,14 @@ export const ContextGoblin: Plugin = async () => {
         },
       }),
       context_goblin_read: tool({
-        description: "Read the compact Context Goblin project cache.",
+        description: "Read the compact Context Goblin project cache. Use it to avoid broad discovery reads, then inspect only task-specific files whose implementation details are still missing.",
         args: {},
         async execute(_args, context) {
           return await fs.readFile(`${projectRoot(context)}/${CACHE_MARKDOWN}`, "utf8")
         },
       }),
       context_goblin_stats: tool({
-        description: "Read Context Goblin cache status and compact cache statistics.",
+        description: "Read Context Goblin cache status and compact cache statistics. Use after refresh/read to briefly tell the user cache size, tracked files, code-map coverage, and whether the cache is fresh.",
         args: {},
         async execute(_args, context) {
           const root = projectRoot(context)

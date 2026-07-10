@@ -46,6 +46,25 @@ Cache files:
 
 The cache includes detected stack, package scripts, a compact directory map, a ranked source/test code map, safety exclusions, and project instructions when present. The state file also records cache statistics such as byte size, line count, section list, tracked-file count, and code-map coverage.
 
+## Recommended Agent Flow
+
+Before broad repository discovery, ask the agent to use Context Goblin in this order:
+
+```txt
+1. context_goblin_status
+2. if missing or stale: context_goblin_refresh
+3. context_goblin_read
+4. context_goblin_stats
+5. briefly summarize cache freshness, size, tracked files, and code-map coverage
+6. inspect only task-specific files whose implementation details are still missing
+```
+
+Reusable agent instruction:
+
+```txt
+Before broad repository discovery, use Context Goblin. Call context_goblin_status, refresh if missing or stale, read the cache, then call context_goblin_stats and briefly mention cache freshness, size, tracked files, and code-map coverage. Use the cache to avoid broad scans and read only task-specific files that are still needed.
+```
+
 ## Safety
 
 Context Goblin must not cache secrets, dependency folders, generated output, or cache internals.
