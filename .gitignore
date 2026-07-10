@@ -3,6 +3,7 @@ dist/
 benchmark-results/
 .opencode/cache/
 *.tgz
+.DS_Store
 examples/*.events.jsonl
 examples/*.metadata.tsv
 
