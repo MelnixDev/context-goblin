@@ -46,6 +46,26 @@ Cache files:
 
 The cache includes detected stack, package scripts, a compact directory map, a ranked source/test code map, safety exclusions, and project instructions when present. The state file also records cache statistics such as byte size, line count, section list, tracked-file count, and code-map coverage.
 
+## Tool Output Compaction
+
+Context Goblin also reduces wasted LLM context from oversized tool outputs. By default, it compacts only large `bash`, `grep`, and `glob` outputs over 12,000 characters. It keeps the beginning and end, records the omitted size in metadata, and tells the agent to rerun a focused command if exact omitted output is required.
+
+It does not compact exact file reads by default, because code content is often needed for correctness.
+
+Configuration:
+
+```json
+{
+  "plugin": [["context-goblin", {
+    "compactToolOutputs": true,
+    "compactToolOutputThresholdChars": 12000,
+    "compactToolOutputKeepStartChars": 4000,
+    "compactToolOutputKeepEndChars": 2000,
+    "compactToolOutputTools": ["bash", "grep", "glob"]
+  }]]
+}
+```
+
 ## Recommended Agent Flow
 
 Before broad repository discovery, ask the agent to use Context Goblin in this order:
@@ -122,6 +142,8 @@ Latest real `openai/gpt-5.5` token run:
 | Cache size | n/a | 2,580 bytes | n/a | pass |
 
 Token result: mixed. Context Goblin reduced file reads and slightly reduced direct input tokens in this run, but total event tokens were higher because provider/OpenCode event accounting includes cache-read, reasoning, and multi-step tool-call records. This is token usage evidence, not a claim of total token-cost reduction.
+
+Note: the committed token report predates tool-output compaction. Run `npm run check:tokens` again after installing `0.1.7+` to measure compaction effects on your OpenCode/provider event accounting.
 
 ## Latest A/B Result
 

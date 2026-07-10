@@ -5,11 +5,13 @@ import { tool, type Plugin } from "@opencode-ai/plugin"
 import { cacheStatus } from "./cacheStatus.js"
 import { CACHE_MARKDOWN } from "./constants.js"
 import { generateProjectContext } from "./generateProjectContext.js"
+import { compactToolOutput, type OutputCompactionOptions } from "./outputCompaction.js"
 
 export { cacheStatus } from "./cacheStatus.js"
 export { detectStack } from "./detectStack.js"
 export { generateProjectContext } from "./generateProjectContext.js"
 export { hashProjectState } from "./hashProjectState.js"
+export { compactToolOutput } from "./outputCompaction.js"
 export { isDeniedPath, redactSecrets } from "./security.js"
 export { truncateMarkdown } from "./truncateMarkdown.js"
 
@@ -19,8 +21,40 @@ function projectRoot(context: { directory?: string; worktree?: string }): string
   return process.cwd()
 }
 
-export const ContextGoblin: Plugin = async () => {
+function numberOption(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function stringArrayOption(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : undefined
+}
+
+function outputCompactionOptions(options: Record<string, unknown> | undefined): OutputCompactionOptions {
   return {
+    enabled: options?.compactToolOutputs !== false,
+    thresholdChars: numberOption(options?.compactToolOutputThresholdChars),
+    keepStartChars: numberOption(options?.compactToolOutputKeepStartChars),
+    keepEndChars: numberOption(options?.compactToolOutputKeepEndChars),
+    tools: stringArrayOption(options?.compactToolOutputTools),
+  }
+}
+
+export const ContextGoblin: Plugin = async (_input, options) => {
+  const compaction = outputCompactionOptions(options)
+  return {
+    "tool.execute.after": async (input, output) => {
+      const compacted = compactToolOutput({ tool: input.tool, args: input.args, output: output.output }, compaction)
+      if (!compacted.compacted) return
+      output.output = compacted.output
+      output.metadata = {
+        ...output.metadata,
+        contextGoblinOutputCompaction: {
+          originalChars: compacted.originalChars,
+          compactedChars: compacted.compactedChars,
+          omittedChars: compacted.omittedChars,
+        },
+      }
+    },
     tool: {
       context_goblin_status: tool({
         description: "Start here before broad repository discovery. Check whether the Context Goblin project cache exists and is fresh; refresh stale or missing caches before reading many files.",
