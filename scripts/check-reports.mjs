@@ -34,7 +34,7 @@ for (const filePath of markdownFiles(examplesDir)) {
   }
 }
 
-for (const reportPath of ["examples/model-complex-task-ab-report.md", "examples/model-general-ab-report.md"]) {
+for (const reportPath of ["examples/model-general-ab-report.md", "examples/token-usage-ab-report.md"]) {
 if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const text = read(reportPath)
   const versionMatch = text.match(/^Context Goblin version: (.+)$/m)
@@ -46,6 +46,9 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const summaryMatch = text.match(/## Summary\n\n([\s\S]*?)\n\n## /)
   if (!summaryMatch) fail(`${reportPath} is missing a summary table`)
   else {
+    if (reportPath.includes("token-usage") && !summaryMatch[1].includes("Baseline Input")) {
+      fail(`${reportPath} is missing token usage columns`)
+    }
     const rows = summaryMatch[1].split("\n").filter((line) => line.startsWith("| ") && !line.includes("---"))
     for (const row of rows.slice(1)) {
       const cells = row.split("|").map((cell) => cell.trim()).filter(Boolean)

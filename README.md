@@ -1,6 +1,8 @@
 # Context Goblin
 
-OpenCode plugin that creates a compact, safe project-context cache so agents can start from cached project facts and a small code map instead of rediscovering the repo.
+OpenCode plugin for AI coding agents that creates a compact, safe project-context cache and code map. Context Goblin helps OpenCode agents reduce repository rediscovery, lower file reads, and reuse project facts without caching secrets.
+
+Useful for OpenCode plugin workflows, AI coding agents, repository context caching, token optimization, token usage tracking, safe project summaries, and code-map based project understanding.
 
 ## Install
 
@@ -73,7 +75,33 @@ npm run build
 npm run check:reports
 npm run smoke:opencode
 npm run check:models:general
+npm run check:tokens
 ```
+
+## Token Usage Benchmark
+
+Run the focused token benchmark:
+
+```bash
+MODEL_GROUP=standard npm run check:tokens
+```
+
+Report:
+
+```txt
+examples/token-usage-ab-report.md
+```
+
+Latest real `openai/gpt-5.5` token run:
+
+| Metric | Baseline | Context Goblin | Change |
+| --- | ---: | ---: | ---: |
+| Input tokens | 12,482 | 12,188 | 2% saved |
+| Total event tokens | 45,585 | 58,374 | 28% more |
+| Files read | 16 | 9 | 44% fewer |
+| Cache size | n/a | 2,580 bytes | pass |
+
+Context Goblin reduced file reads and slightly reduced input tokens in this run. Total event tokens were higher because provider cache-read accounting increased during the cache-guided run, so token savings should be interpreted by metric, not as a single universal number.
 
 ## Latest A/B Result
 

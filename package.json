@@ -1,7 +1,7 @@
 {
   "name": "context-goblin",
-  "version": "0.1.3",
-  "description": "OpenCode plugin that generates a compact, safe project context cache.",
+  "version": "0.1.4",
+  "description": "OpenCode plugin for AI coding agents that caches safe repo context, code maps, and token-usage evidence.",
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -17,13 +17,22 @@
     "test:watch": "vitest",
     "smoke:opencode": "bash scripts/smoke-opencode.sh",
     "check:models:general": "bash scripts/model-ab.sh",
+    "check:tokens": "TOKEN_REPORT=1 bash scripts/model-ab.sh",
     "check:reports": "node scripts/check-reports.mjs",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run check:reports"
   },
   "keywords": [
     "opencode",
+    "opencode-plugin",
     "plugin",
-    "context"
+    "context",
+    "context-cache",
+    "ai-agent",
+    "coding-agent",
+    "token-optimization",
+    "token-reduction",
+    "repo-context",
+    "code-map"
   ],
   "author": "Volodymyr Melnychuk",
   "license": "MIT",

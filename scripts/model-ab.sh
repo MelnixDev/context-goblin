@@ -27,10 +27,17 @@ else
   exit 1
 fi
 
-report_path="$repo_root/examples/model-general-ab-report.md"
-metadata_path="$repo_root/examples/model-general-ab.metadata.tsv"
-report_title="General Model Context Goblin A/B Report"
-task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
+if [ "${TOKEN_REPORT:-0}" = "1" ]; then
+  report_path="$repo_root/examples/token-usage-ab-report.md"
+  metadata_path="$repo_root/examples/token-usage-ab.metadata.tsv"
+  report_title="Context Goblin Token Usage A/B Report"
+  task_description='Measure token usage while planning where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
+else
+  report_path="$repo_root/examples/model-general-ab-report.md"
+  metadata_path="$repo_root/examples/model-general-ab.metadata.tsv"
+  report_title="General Model Context Goblin A/B Report"
+  task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
+fi
 
 mkdir -p "$repo_root/examples"
 
@@ -190,8 +197,10 @@ if [ "${REUSE_EXISTING:-0}" != "1" ]; then
 export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
 EOF
 
-    baseline_raw="$repo_root/examples/model-general-ab.$name.baseline.events.jsonl"
-    goblin_raw="$repo_root/examples/model-general-ab.$name.goblin.events.jsonl"
+    raw_prefix="model-general-ab"
+    if [ "${TOKEN_REPORT:-0}" = "1" ]; then raw_prefix="token-usage-ab"; fi
+    baseline_raw="$repo_root/examples/$raw_prefix.$name.baseline.events.jsonl"
+    goblin_raw="$repo_root/examples/$raw_prefix.$name.goblin.events.jsonl"
     baseline_stderr="$tmpdir/baseline.stderr"
     goblin_stderr="$tmpdir/goblin.stderr"
 
@@ -214,6 +223,7 @@ REPORT_PATH="$report_path" \
 MODEL_GROUP_USED="$model_group" \
 REPORT_TITLE="$report_title" \
 TASK_DESCRIPTION="$task_description" \
+TOKEN_REPORT="${TOKEN_REPORT:-0}" \
 BASELINE_PROMPT="$baseline_prompt" \
 GOBLIN_PROMPT="$goblin_prompt" \
 node <<'NODE'
@@ -379,7 +389,11 @@ const results = rows.map((row) => {
   return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality: q, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
 })
 
-const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction }) => `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`).join("\n")
+const tokenReport = process.env.TOKEN_REPORT === "1"
+const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => {
+  if (tokenReport) return `| ${row.model} | ${baseline.inputTokens} | ${goblin.inputTokens} | ${inputReduction} | ${baseline.totalTokens} | ${goblin.totalTokens} | ${totalReduction} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${cacheSize} | ${result} |`
+  return `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`
+}).join("\n")
 
 const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
 
@@ -466,6 +480,12 @@ ${sanitize(goblin.text || "No final text captured.", row)}
 \`\`\`
 `).join("\n")
 
+const tableHeader = tokenReport
+  ? `| Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Cache Size | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |`
+  : `| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |`
+
 const report = `# ${process.env.REPORT_TITLE}
 
 Generated: ${new Date().toISOString()}
@@ -479,8 +499,7 @@ ${process.env.TASK_DESCRIPTION}
 
 ## Summary
 
-| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+${tableHeader}
 ${summaryRows}
 
 ${details}
