@@ -29,6 +29,7 @@ describe("generateProjectContext", () => {
       "## Detected Stack",
       "## Important Commands",
       "## Directory Map",
+      "## Code Map",
       "## Safety Exclusions",
       "## Agent Instructions",
     ]) {
@@ -41,5 +42,37 @@ describe("generateProjectContext", () => {
     expect(state.generatedAt).toBeTypeOf("string")
     expect(state.projectHash).toBeTypeOf("string")
     expect(state.trackedFiles).toBeInstanceOf(Array)
+  })
+
+  it("includes compact source and test code facts", async () => {
+    const root = await tempProject()
+    await writeFile(root, "package.json", JSON.stringify({ scripts: { test: "vitest" }, dependencies: { react: "latest" } }))
+    await writeFile(root, "src/features/cart/cartStore.ts", [
+      "export interface CartItem { id: string }",
+      "export function addToCart(item: CartItem) { return item }",
+      "export function removeFromCart(id: string) { return id }",
+      "export function getCartItems() { return [] as CartItem[] }",
+    ].join("\n"))
+    await writeFile(root, "src/features/cart/CartDrawer.tsx", [
+      "import { getCartItems, removeFromCart } from './cartStore'",
+      "export function CartDrawer() { return <aside>{getCartItems().map((item) => <button onClick={() => removeFromCart(item.id)} />)}</aside> }",
+    ].join("\n"))
+    await writeFile(root, "tests/cartStore.test.ts", [
+      "import { describe, it } from 'vitest'",
+      "describe('cartStore', () => { it('adds and removes items', () => {}) })",
+    ].join("\n"))
+
+    await generateProjectContext({ rootDir: root, maxCacheKb: 12 })
+
+    const markdown = await readFile(root, CACHE_MARKDOWN)
+    expect(markdown).toContain("## Code Map")
+    expect(markdown).toContain("src/features/cart/cartStore.ts")
+    expect(markdown).toContain("addToCart")
+    expect(markdown).toContain("removeFromCart")
+    expect(markdown).toContain("getCartItems")
+    expect(markdown).toContain("src/features/cart/CartDrawer.tsx")
+    expect(markdown).toContain("CartDrawer")
+    expect(markdown).toContain("tests/cartStore.test.ts")
+    expect(markdown).toContain("adds and removes items")
   })
 })

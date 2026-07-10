@@ -21,4 +21,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
+      - run: npm run check:reports
       - run: npm pack --dry-run

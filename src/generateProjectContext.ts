@@ -8,6 +8,9 @@ import { isDeniedPath, redactSecrets } from "./security.js"
 import { truncateMarkdown } from "./truncateMarkdown.js"
 import type { ContextGoblinOptions, ProjectState } from "./types.js"
 
+const codeFilePattern = /\.(?:[cm]?[jt]sx?|vue|svelte)$/
+const maxCodeMapFiles = 40
+
 async function listDirectoryMap(rootDir: string, dir = ".", depth = 0): Promise<string[]> {
   if (depth > 2) return []
   const absoluteDir = path.join(rootDir, dir)
@@ -39,6 +42,64 @@ async function readTextIfAllowed(rootDir: string, relativePath: string): Promise
   }
 }
 
+async function listCodeFiles(rootDir: string, dir = "."): Promise<string[]> {
+  const absoluteDir = path.join(rootDir, dir)
+  const files: string[] = []
+  try {
+    const dirents = await fs.readdir(absoluteDir, { withFileTypes: true })
+    for (const dirent of dirents.sort((a, b) => a.name.localeCompare(b.name))) {
+      const relativePath = dir === "." ? dirent.name : `${dir}/${dirent.name}`
+      if (isDeniedPath(relativePath)) continue
+      if (dirent.isDirectory()) files.push(...await listCodeFiles(rootDir, relativePath))
+      else if (codeFilePattern.test(relativePath)) files.push(relativePath)
+      if (files.length >= maxCodeMapFiles) return files.slice(0, maxCodeMapFiles)
+    }
+  } catch {
+    return []
+  }
+  return files
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))]
+}
+
+function extractMatches(input: string, pattern: RegExp, limit = 8): string[] {
+  return unique([...input.matchAll(pattern)].map((match) => match[1])).slice(0, limit)
+}
+
+function summarizeCodeFile(relativePath: string, text: string): string[] {
+  const imports = extractMatches(text, /^import\s+(?:.+?\s+from\s+)?["'](.+?)["']/gm, 6)
+  const exports = unique([
+    ...extractMatches(text, /^export\s+(?:async\s+)?(?:function|class|interface|type|const|let|var)\s+(\w+)/gm, 10),
+    ...extractMatches(text, /^export\s*\{([^}]+)\}/gm, 4).flatMap((group) => group.split(",").map((item) => item.trim().split(" as ")[0]?.trim() ?? "")),
+  ]).slice(0, 12)
+  const components = extractMatches(text, /(?:export\s+)?function\s+([A-Z][A-Za-z0-9_]*)\s*\(/g, 8)
+  const tests = extractMatches(text, /\b(?:describe|it|test)\s*\(\s*["'`](.+?)["'`]/g, 8)
+
+  const lines = [`- ${relativePath}`]
+  if (imports.length) lines.push(`  - imports: ${imports.join(", ")}`)
+  if (exports.length) lines.push(`  - exports: ${exports.join(", ")}`)
+  if (components.length) lines.push(`  - components: ${components.join(", ")}`)
+  if (tests.length) lines.push(`  - tests: ${tests.join(", ")}`)
+  return lines
+}
+
+async function buildCodeMap(rootDir: string): Promise<string[]> {
+  const files = await listCodeFiles(rootDir)
+  const entries: string[] = []
+  for (const file of files) {
+    const text = await readTextIfAllowed(rootDir, file)
+    if (!text) continue
+    entries.push(...summarizeCodeFile(file, text))
+    if (entries.length >= 180) {
+      entries.push("- ...")
+      break
+    }
+  }
+  return entries
+}
+
 function formatScripts(scripts: Record<string, string>): string {
   const entries = Object.entries(scripts)
   if (entries.length === 0) return "- [NEEDS INPUT] No package scripts detected."
@@ -51,6 +112,7 @@ export async function generateProjectContext(options: ContextGoblinOptions): Pro
   const stack = await detectStack(rootDir)
   const projectHash = await hashProjectState(rootDir)
   const directoryMap = await listDirectoryMap(rootDir)
+  const codeMap = await buildCodeMap(rootDir)
   const agents = await readTextIfAllowed(rootDir, "AGENTS.md")
 
   const markdown = truncateMarkdown(redactSecrets(`# Context Goblin Project Cache
@@ -73,6 +135,10 @@ ${formatScripts(stack.scripts)}
 ## Directory Map
 
 ${directoryMap.length ? directoryMap.join("\n") : "- [NEEDS INPUT] No readable project files detected."}
+
+## Code Map
+
+${codeMap.length ? codeMap.join("\n") : "- [NEEDS INPUT] No source/test code facts detected."}
 
 ## Safety Exclusions
 

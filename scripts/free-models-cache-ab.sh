@@ -119,11 +119,13 @@ function parseEvents(filePath, root) {
   const toolCounts = {}
   const files = new Set()
   const textParts = []
+  const errors = []
   let inputTokens = 0, outputTokens = 0, reasoningTokens = 0, cacheReadTokens = 0, cacheWriteTokens = 0, totalTokens = 0, cost = 0
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue
     try {
       const record = JSON.parse(line)
+      if (record.type === "error") errors.push(errorSummary(record.error))
       const part = record.part
       if (!part) continue
       if (part.type === "tool" && part.tool) {
@@ -142,7 +144,17 @@ function parseEvents(filePath, root) {
       cost += part.cost || 0
     } catch {}
   }
-  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
+  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", errors, inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
+}
+
+function errorSummary(error) {
+  if (!error) return "Unknown error"
+  const data = error.data || {}
+  const parts = []
+  if (error.name) parts.push(error.name)
+  if (data.statusCode) parts.push(`HTTP ${data.statusCode}`)
+  if (data.message) parts.push(data.message)
+  return parts.join(": ") || String(error)
 }
 
 function normalizeFile(root, value) {
@@ -175,10 +187,12 @@ function collectFiles(value, root, files) {
 }
 
 function sanitize(value, row) {
-  return String(value || "")
-    .replaceAll(row.baselineRoot, "<baseline-fixture>")
-    .replaceAll(row.goblinRoot, "<goblin-fixture>")
+  let text = String(value || "")
+  if (row.baselineRoot) text = text.replaceAll(row.baselineRoot, "<baseline-fixture>")
+  if (row.goblinRoot) text = text.replaceAll(row.goblinRoot, "<goblin-fixture>")
+  return text
     .replaceAll(repoRoot, "<repo>")
+    .replace(/https:\/\/opencode\.ai\/workspace\/[^\s)]+\/billing/g, "https://opencode.ai/workspace/<workspace>/billing")
     .replace(/super-secret[-\w]*/g, "[REDACTED]")
     .replace(/(API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\s\n]+)/g, "$1=[REDACTED]")
 }
@@ -195,6 +209,7 @@ function toolList(metrics) {
   return entries.length ? entries.map(([tool, count]) => `- ${tool}: ${count}`).join("\n") : "- none"
 }
 function fileList(files) { return files.length ? files.map((file) => `- ${file}`).join("\n") : "- none observed" }
+function errorList(errors) { return errors.length ? errors.map((error) => `- ${sanitize(error, { baselineRoot: "", goblinRoot: "" })}`).join("\n") : "- none" }
 
 const results = rows.map((row) => {
   const baseline = parseEvents(row.baselineRaw, row.baselineRoot)
@@ -204,25 +219,31 @@ const results = rows.map((row) => {
   const cache = fs.existsSync(cachePath) ? fs.readFileSync(cachePath, "utf8") : ""
   const secretLeakage = cache.includes("super-secret") || /(?:API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\[]\S+)/.test(cache)
   const cacheSize = Buffer.byteLength(cache)
-  const goblinOk = row.goblinExit === 0 && goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024
-  const baselineOk = row.baselineExit === 0
-  return { row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens) }
+  const baselineError = row.baselineExit !== 0 || baseline.errors.length > 0
+  const goblinError = row.goblinExit !== 0 || goblin.errors.length > 0
+  const goblinOk = !goblinError && goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024
+  const baselineOk = !baselineError
+  const result = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
+  return { row, baseline, goblin, baselineOk, goblinOk, result, cacheSize, secretLeakage, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens) }
 })
 
-const summaryRows = results.map(({ row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, fileReduction, inputReduction }) => `| ${row.model} | ${yn(baselineOk)} | ${yn(goblinOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${baselineOk && goblinOk ? "pass" : "fail"} |`).join("\n")
+const summaryRows = results.map(({ row, baseline, goblin, baselineOk, goblinOk, result, cacheSize, secretLeakage, fileReduction, inputReduction }) => `| ${row.model} | ${yn(baselineOk)} | ${yn(goblinOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`).join("\n")
 
-const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, cacheSize, secretLeakage, fileReduction, inputReduction }) => `## ${row.model}
+const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, result, cacheSize, secretLeakage, fileReduction, inputReduction }) => `## ${row.model}
 
 ### Summary
 
 - Baseline completed: ${baselineOk}
 - Context Goblin completed and validated: ${Boolean(goblinOk)}
+- Result: ${result}
 - Baseline direct file reads: ${baseline.files.length}
 - Context Goblin built-in file reads: ${goblin.files.length}
 - File-read reduction: ${fileReduction}
-- Input-token change: ${inputReduction}
+- Input-token reduction: ${inputReduction}
 - Cache size: ${cacheSize} bytes
 - Secret leakage: ${secretLeakage ? "detected" : "none detected"}
+- Baseline errors: ${baseline.errors.length}
+- Context Goblin errors: ${goblin.errors.length}
 
 ### Baseline
 
@@ -242,6 +263,10 @@ ${toolList(baseline)}
 Files read:
 
 ${fileList(baseline.files)}
+
+Errors:
+
+${errorList(baseline.errors)}
 
 Final answer:
 
@@ -271,6 +296,10 @@ Files read:
 
 ${fileList(goblin.files)}
 
+Errors:
+
+${errorList(goblin.errors)}
+
 Final answer:
 
 \`\`\`txt
@@ -290,7 +319,7 @@ ${rows.map((row) => `- ${row.model}`).join("\n")}
 
 ## Summary
 
-| Model | Baseline OK | Goblin OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Cache Size | Secret Leak | Result |
+| Model | Baseline OK | Goblin OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Cache Size | Secret Leak | Result |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
 ${summaryRows}
 
@@ -300,5 +329,5 @@ ${details}
 fs.writeFileSync(process.env.REPORT_PATH, report)
 console.log(report)
 
-if (!results.some((result) => result.baselineOk && result.goblinOk)) process.exit(1)
+if (!results.some((result) => result.result === "pass")) process.exit(1)
 NODE

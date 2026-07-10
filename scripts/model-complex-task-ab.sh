@@ -11,6 +11,7 @@ standard_models="openai/gpt-5.5"
 free_models="opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free opencode/nemotron-3-ultra-free opencode/north-mini-code-free"
 other_models="openai/gpt-5.5-fast opencode/gpt-5.5 opencode/gpt-5.4-mini"
 model_group="${MODEL_GROUP:-all}"
+task_kind="${TASK_KIND:-complex}"
 
 if [ -n "${OPENCODE_MODELS:-}" ]; then
   models="$OPENCODE_MODELS"
@@ -27,8 +28,20 @@ else
   exit 1
 fi
 
-report_path="$repo_root/examples/model-complex-task-ab-report.md"
-metadata_path="$repo_root/examples/model-complex-task-ab.metadata.tsv"
+if [ "$task_kind" = "general" ]; then
+  report_path="$repo_root/examples/model-general-ab-report.md"
+  metadata_path="$repo_root/examples/model-general-ab.metadata.tsv"
+  report_title="General Model Context Goblin A/B Report"
+  task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
+elif [ "$task_kind" = "complex" ]; then
+  report_path="$repo_root/examples/model-complex-task-ab-report.md"
+  metadata_path="$repo_root/examples/model-complex-task-ab.metadata.tsv"
+  report_title="Complex Task Context Goblin A/B Report"
+  task_description='Plan adding a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
+else
+  echo "Unknown TASK_KIND: $task_kind"
+  exit 1
+fi
 
 mkdir -p "$repo_root/examples"
 
@@ -172,8 +185,13 @@ safe_name() {
   printf '%s' "$1" | tr '/:' '--' | tr -cd '[:alnum:]._-'
 }
 
-baseline_prompt='No Context Goblin is available. Use normal OpenCode tools to inspect the smallest files needed to plan adding a "Save for later" feature to the cart. Read package.json, src/App.tsx, src/routes.tsx, src/features/cart/cartStore.ts, src/features/cart/CartDrawer.tsx, src/features/catalog/ProductCard.tsx, src/features/catalog/ProductList.tsx, and tests/cartStore.test.ts. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
-goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Then inspect only the smallest extra files needed to plan adding a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
+if [ "$task_kind" = "general" ]; then
+  baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
+  goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
+else
+  baseline_prompt='No Context Goblin is available. Use normal OpenCode tools to inspect the smallest files needed to plan adding a "Save for later" feature to the cart. Read package.json, src/App.tsx, src/routes.tsx, src/features/cart/cartStore.ts, src/features/cart/CartDrawer.tsx, src/features/catalog/ProductCard.tsx, src/features/catalog/ProductList.tsx, and tests/cartStore.test.ts. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
+  goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Then inspect only the smallest extra files needed to plan adding a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
+fi
 
 if [ "${REUSE_EXISTING:-0}" != "1" ]; then
   for model in $models; do
@@ -210,6 +228,8 @@ REPO_ROOT="$repo_root" \
 METADATA_PATH="$metadata_path" \
 REPORT_PATH="$report_path" \
 MODEL_GROUP_USED="$model_group" \
+REPORT_TITLE="$report_title" \
+TASK_DESCRIPTION="$task_description" \
 BASELINE_PROMPT="$baseline_prompt" \
 GOBLIN_PROMPT="$goblin_prompt" \
 node <<'NODE'
@@ -333,9 +353,27 @@ const qualityChecks = [
   { label: "safety exclusions", pattern: /\.env|secret|safety|exclusion/i },
 ]
 
+const requiredQualityChecks = [
+  { label: "save-for-later feature", pattern: /save for later|saveForLater|saved[- ]?for[- ]?later|savedItems|saved items|move to cart/i },
+  { label: "cart state", pattern: /cartStore\.ts|cartStore|savedItems|saveForLater|moveToCart/i },
+  { label: "cart UI", pattern: /CartDrawer\.tsx|CartDrawer|save for later button|move to cart/i },
+  { label: "cart tests", pattern: /cartStore\.test\.ts|tests?\b|vitest/i },
+]
+
+const disqualifyingQualityChecks = [
+  { label: "cart persistence instead of save-for-later", pattern: /saveCart\(|getSavedCart\(|loadCartFromStorage|cart persistence|persist cart|save\/load functionality/i },
+]
+
 function quality(text) {
   const matched = qualityChecks.filter((check) => check.pattern.test(text || ""))
-  return { score: matched.length, matched: matched.map((check) => check.label) }
+  const required = requiredQualityChecks.filter((check) => check.pattern.test(text || ""))
+  const disqualified = disqualifyingQualityChecks.filter((check) => check.pattern.test(text || ""))
+  return {
+    score: matched.length,
+    matched: matched.map((check) => check.label),
+    required: required.map((check) => check.label),
+    disqualified: disqualified.map((check) => check.label),
+  }
 }
 
 const results = rows.map((row) => {
@@ -350,7 +388,7 @@ const results = rows.map((row) => {
   const baselineError = row.baselineExit !== 0 || baseline.errors.length > 0
   const goblinError = row.goblinExit !== 0 || goblin.errors.length > 0
   const toolUseOk = Boolean(goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
-  const answerOk = q.score >= 4
+  const answerOk = q.score >= 4 && q.required.length === requiredQualityChecks.length && q.disqualified.length === 0
   const baselineOk = !baselineError
   const goblinOk = !goblinError && toolUseOk && answerOk
   const result = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
@@ -375,6 +413,8 @@ const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, tool
 - Total-token reduction: ${totalReduction}
 - Quality score: ${quality.score}/6
 - Quality hits: ${quality.matched.length ? quality.matched.join(", ") : "none"}
+- Required quality hits: ${quality.required.length ? quality.required.join(", ") : "none"}
+- Quality disqualifiers: ${quality.disqualified.length ? quality.disqualified.join(", ") : "none"}
 - Cache size: ${cacheSize} bytes
 - Secret leakage: ${secretLeakage ? "detected" : "none detected"}
 - Baseline errors: ${baseline.errors.length}
@@ -442,7 +482,7 @@ ${sanitize(goblin.text || "No final text captured.", row)}
 \`\`\`
 `).join("\n")
 
-const report = `# Complex Task Context Goblin A/B Report
+const report = `# ${process.env.REPORT_TITLE}
 
 Generated: ${new Date().toISOString()}
 OpenCode version: ${process.env.OPENCODE_VERSION}
@@ -451,7 +491,7 @@ Model group: ${process.env.MODEL_GROUP_USED}
 
 ## Task
 
-Plan adding a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.
+${process.env.TASK_DESCRIPTION}
 
 ## Summary
 

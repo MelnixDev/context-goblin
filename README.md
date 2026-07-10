@@ -66,146 +66,34 @@ coverage/**
 npm run typecheck
 npm run test
 npm run build
+npm run check:reports
 npm run smoke:opencode
-npm run check:opencode
+npm run check:models:general
 ```
 
-## GPT-5.5 Cache Check
+## Latest A/B Result
 
-Run a real OpenCode/GPT-5.5 check on a clean synthetic React/Vite/TypeScript fixture:
+Run the current general model A/B benchmark:
 
 ```bash
-OPENCODE_MODEL=openai/gpt-5.5 npm run check:opencode:gpt55
+MODEL_GROUP=standard npm run check:models:general
 ```
 
 Report:
 
 ```txt
-examples/gpt-5.5-cache-check.md
+examples/model-general-ab-report.md
 ```
 
-Latest result:
+The benchmark compares a normal OpenCode run against a Context Goblin run on the same synthetic React/Vite cart/catalog app. The baseline is not forced to read a fixed file list; the Context Goblin run must call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before inspecting only missing implementation details.
 
-```txt
-Result: pass
-Tool calls: context_goblin_status, context_goblin_refresh, context_goblin_read
-Cache size: 1063 bytes
-Secret leakage: none detected
-Input tokens: 7752
-Output tokens: 222
-Cache read tokens: 17920
-```
+Latest result using `openai/gpt-5.5`:
 
-## GPT-5.5 A/B Test
-
-Run a no-cache vs cache comparison on two identical synthetic fixtures:
-
-```bash
-OPENCODE_MODEL=openai/gpt-5.5 npm run check:opencode:gpt55:ab
-```
-
-Report:
-
-```txt
-examples/gpt-5.5-cache-vs-no-cache.md
-```
-
-The baseline has no Context Goblin plugin and asks GPT-5.5 to inspect project files directly. The cache run enables Context Goblin and requires `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before answering.
-
-Latest A/B result:
-
-```txt
-Result: pass
-Baseline direct file reads: 5
-Context Goblin built-in file reads: 0
-File-read reduction: 100%
-Input-token reduction: 72%
-Context Goblin cache size: 1045 bytes
-Secret leakage: none detected
-```
-
-Raw OpenCode event logs are written to `examples/*.events.jsonl` and ignored by git.
-
-## Free Model A/B Test
-
-Run the same no-cache vs cache comparison across free OpenCode models:
-
-```bash
-npm run check:opencode:free-models
-```
-
-Report:
-
-```txt
-examples/free-models-cache-ab.md
-```
-
-Default models:
-
-```txt
-opencode/deepseek-v4-flash-free
-opencode/mimo-v2.5-free
-opencode/nemotron-3-ultra-free
-opencode/north-mini-code-free
-```
-
-Override the model list:
-
-```bash
-OPENCODE_MODELS="opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free" npm run check:opencode:free-models
-```
-
-Latest free-model A/B result:
-
-| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Change | Cache Size | Result |
+| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Cache Size | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| opencode/deepseek-v4-flash-free | 5 | 0 | 100% | 1% | 1045 | pass |
-| opencode/mimo-v2.5-free | 5 | 0 | 100% | 0% | 1045 | pass |
-| opencode/nemotron-3-ultra-free | 5 | 0 | 100% | 19% | 1045 | pass |
-| opencode/north-mini-code-free | 5 | 0 | 100% | 44% | 1045 | pass |
+| openai/gpt-5.5 | 16 | 5 | 69% | 68% | 2580 | pass |
 
-## Complex Task A/B Test
-
-Run a realistic planning task across standard, free, and other model groups:
-
-```bash
-MODEL_GROUP=all npm run check:models:complex
-```
-
-Report:
-
-```txt
-examples/model-complex-task-ab-report.md
-```
-
-The task asks each model to plan a "Save for later" cart feature in a synthetic React/Vite catalog/cart app. The report compares direct file reads, Context Goblin cache usage, token evidence, safety checks, and a 6-point answer-quality score. Negative token reductions mean the Context Goblin run used more input tokens than the baseline.
-
-Latest complex-task result:
-
-| Model | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Result |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | yes | yes | 8 | 8 | 0% | -51% | 6/6 | pass |
-| opencode/deepseek-v4-flash-free | yes | yes | 8 | 8 | 0% | -12% | 6/6 | pass |
-| opencode/mimo-v2.5-free | yes | yes | 8 | 5 | 38% | -18% | 6/6 | pass |
-| opencode/nemotron-3-ultra-free | yes | no | 8 | 1 | 88% | -381% | 1/6 | fail |
-| opencode/north-mini-code-free | yes | yes | 8 | 2 | 75% | -51% | 4/6 | pass |
-| openai/gpt-5.5-fast | no | yes | 8 | 10 | -25% | -378% | 6/6 | fail |
-| opencode/gpt-5.5 | no | no | 0 | 0 | n/a | n/a | 0/6 | error |
-| opencode/gpt-5.4-mini | no | no | 0 | 0 | n/a | n/a | 0/6 | error |
-
-## Benchmark
-
-```bash
-npm run benchmark
-```
-
-Output:
-
-```txt
-benchmark-results/context-goblin-benchmark.md
-```
-
-The benchmark reports tool calls, inferred file reads, cache size, token/cost evidence, secret leakage, denied-file checks, and diagnostics if OpenCode/provider stalls.
+Negative token reduction means the Context Goblin run used more input tokens than the baseline. Raw OpenCode event logs are written to `examples/*.events.jsonl` and ignored by git.
 
 ## License
 
