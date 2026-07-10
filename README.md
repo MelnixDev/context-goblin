@@ -2,7 +2,7 @@
 
 OpenCode plugin for AI coding agents that creates a compact, safe project-context cache and code map. Context Goblin helps OpenCode agents reduce repository rediscovery, lower file reads, and reuse project facts without caching secrets.
 
-Useful for OpenCode plugin workflows, AI coding agents, repository context caching, token optimization, token usage tracking, safe project summaries, and code-map based project understanding.
+Useful for OpenCode plugin workflows, AI coding agents, repository context caching, token usage evidence, safe project summaries, and code-map based project understanding.
 
 ## Install
 
@@ -34,6 +34,7 @@ Shim locations:
 context_goblin_status
 context_goblin_refresh
 context_goblin_read
+context_goblin_stats
 ```
 
 Cache files:
@@ -43,7 +44,7 @@ Cache files:
 .opencode/cache/context-goblin/project-context.state.json
 ```
 
-The cache includes detected stack, package scripts, a compact directory map, a compact source/test code map, safety exclusions, and project instructions when present.
+The cache includes detected stack, package scripts, a compact directory map, a ranked source/test code map, safety exclusions, and project instructions when present. The state file also records cache statistics such as byte size, line count, section list, tracked-file count, and code-map coverage.
 
 ## Safety
 
@@ -78,7 +79,7 @@ npm run check:models:general
 npm run check:tokens
 ```
 
-## Token Usage Benchmark
+## Token Usage Evidence
 
 Run the focused token benchmark:
 
@@ -94,14 +95,14 @@ examples/token-usage-ab-report.md
 
 Latest real `openai/gpt-5.5` token run:
 
-| Metric | Baseline | Context Goblin | Change |
-| --- | ---: | ---: | ---: |
-| Input tokens | 12,482 | 12,188 | 2% saved |
-| Total event tokens | 45,585 | 58,374 | 28% more |
-| Files read | 16 | 9 | 44% fewer |
-| Cache size | n/a | 2,580 bytes | pass |
+| Metric | Baseline | Context Goblin | Change | Status |
+| --- | ---: | ---: | ---: | --- |
+| Input tokens | 12,482 | 12,188 | 2% fewer | pass |
+| Total event tokens | 45,585 | 58,374 | 28% more | fail |
+| Files read | 16 | 9 | 44% fewer | pass |
+| Cache size | n/a | 2,580 bytes | n/a | pass |
 
-Context Goblin reduced file reads and slightly reduced input tokens in this run. Total event tokens were higher because provider cache-read accounting increased during the cache-guided run, so token savings should be interpreted by metric, not as a single universal number.
+Token result: mixed. Context Goblin reduced file reads and slightly reduced direct input tokens in this run, but total event tokens were higher because provider/OpenCode event accounting includes cache-read, reasoning, and multi-step tool-call records. This is token usage evidence, not a claim of total token-cost reduction.
 
 ## Latest A/B Result
 

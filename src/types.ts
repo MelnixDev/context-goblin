@@ -17,6 +17,16 @@ export interface ProjectState {
   generatedAt: string
   projectHash: string
   trackedFiles: string[]
+  stats?: CacheStats
+}
+
+export interface CacheStats {
+  cacheBytes: number
+  cacheLines: number
+  directoryEntries: number
+  codeMapFiles: number
+  codeMapEntries: number
+  sections: string[]
 }
 
 export interface CacheStatus {

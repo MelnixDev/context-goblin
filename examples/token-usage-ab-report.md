@@ -1,8 +1,8 @@
 # Context Goblin Token Usage A/B Report
 
-Generated: 2026-07-10T16:59:35.024Z
+Generated: 2026-07-10T17:13:25.470Z
 OpenCode version: 1.17.18
-Context Goblin version: 0.1.4
+Context Goblin version: 0.1.5
 Model group: standard
 
 ## Task
@@ -11,9 +11,9 @@ Measure token usage while planning where and how to add a "Save for later" featu
 
 ## Summary
 
-| Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Cache Size | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 12482 | 12188 | 2% | 45585 | 58374 | -28% | 16 | 9 | 44% | 2580 | pass |
+| Model | Baseline Input | Goblin Input | Input Saved | Input Status | Baseline Total | Goblin Total | Total Saved | Total Status | Baseline Reads | Goblin Reads | File Saved | File Status | Cache Size | Token Result |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- |
+| openai/gpt-5.5 | 12482 | 12188 | 2% | pass | 45585 | 58374 | -28% | fail | 16 | 9 | 44% | pass | 2580 | mixed |
 
 ## openai/gpt-5.5
 
@@ -23,12 +23,15 @@ Measure token usage while planning where and how to add a "Save for later" featu
 - Context Goblin completed and validated: true
 - Tool use OK: true
 - Answer OK: true
-- Result: pass
+- Result: mixed
 - Baseline direct file reads: 16
 - Context Goblin built-in file reads: 9
 - File-read reduction: 44%
+- File-read status: pass
 - Input-token reduction: 2%
+- Input-token status: pass
 - Total-token reduction: -28%
+- Total-token status: fail
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Required quality hits: save-for-later feature, cart state, cart UI, cart tests

@@ -328,6 +328,12 @@ function reduction(before, after) {
   if (!before) return "n/a"
   return `${Math.round(((before - after) / before) * 100)}%`
 }
+function metricStatus(before, after) {
+  if (!before) return "n/a"
+  if (after < before) return "pass"
+  if (after === before) return "flat"
+  return "fail"
+}
 function yn(value) { return value ? "yes" : "no" }
 function cost(value) { return value === 0 ? "0" : value.toFixed(6) }
 function toolTotal(metrics) { return Object.values(metrics.toolCounts).reduce((a, b) => a + b, 0) }
@@ -385,17 +391,21 @@ const results = rows.map((row) => {
   const answerOk = q.score >= 4 && q.required.length === requiredQualityChecks.length && q.disqualified.length === 0
   const baselineOk = !baselineError
   const goblinOk = !goblinError && toolUseOk && answerOk
-  const result = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
-  return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality: q, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
+  const fileStatus = metricStatus(baseline.files.length, goblin.files.length)
+  const inputStatus = metricStatus(baseline.inputTokens, goblin.inputTokens)
+  const totalStatus = metricStatus(baseline.totalTokens, goblin.totalTokens)
+  const generalResult = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
+  const tokenResult = baselineError || goblinError ? "error" : answerOk && fileStatus === "pass" && inputStatus === "pass" && totalStatus === "pass" ? "pass" : answerOk && (fileStatus === "pass" || inputStatus === "pass") ? "mixed" : "fail"
+  return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result: process.env.TOKEN_REPORT === "1" ? tokenResult : generalResult, cacheSize, secretLeakage, quality: q, fileStatus, inputStatus, totalStatus, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
 })
 
 const tokenReport = process.env.TOKEN_REPORT === "1"
-const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => {
-  if (tokenReport) return `| ${row.model} | ${baseline.inputTokens} | ${goblin.inputTokens} | ${inputReduction} | ${baseline.totalTokens} | ${goblin.totalTokens} | ${totalReduction} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${cacheSize} | ${result} |`
+const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => {
+  if (tokenReport) return `| ${row.model} | ${baseline.inputTokens} | ${goblin.inputTokens} | ${inputReduction} | ${inputStatus} | ${baseline.totalTokens} | ${goblin.totalTokens} | ${totalReduction} | ${totalStatus} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${fileStatus} | ${cacheSize} | ${result} |`
   return `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`
 }).join("\n")
 
-const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
+const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
 
 ### Summary
 
@@ -407,8 +417,11 @@ const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, tool
 - Baseline direct file reads: ${baseline.files.length}
 - Context Goblin built-in file reads: ${goblin.files.length}
 - File-read reduction: ${fileReduction}
+- File-read status: ${fileStatus}
 - Input-token reduction: ${inputReduction}
+- Input-token status: ${inputStatus}
 - Total-token reduction: ${totalReduction}
+- Total-token status: ${totalStatus}
 - Quality score: ${quality.score}/6
 - Quality hits: ${quality.matched.length ? quality.matched.join(", ") : "none"}
 - Required quality hits: ${quality.required.length ? quality.required.join(", ") : "none"}
@@ -481,8 +494,8 @@ ${sanitize(goblin.text || "No final text captured.", row)}
 `).join("\n")
 
 const tableHeader = tokenReport
-  ? `| Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Cache Size | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |`
+  ? `| Model | Baseline Input | Goblin Input | Input Saved | Input Status | Baseline Total | Goblin Total | Total Saved | Total Status | Baseline Reads | Goblin Reads | File Saved | File Status | Cache Size | Token Result |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- |`
   : `| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |`
 
@@ -508,5 +521,5 @@ ${details}
 fs.writeFileSync(process.env.REPORT_PATH, report)
 console.log(report)
 
-if (!results.some((result) => result.result === "pass")) process.exit(1)
+if (!results.some((result) => result.result === "pass" || result.result === "mixed")) process.exit(1)
 NODE

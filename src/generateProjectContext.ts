@@ -6,10 +6,11 @@ import { detectStack } from "./detectStack.js"
 import { hashProjectState } from "./hashProjectState.js"
 import { isDeniedPath, redactSecrets } from "./security.js"
 import { truncateMarkdown } from "./truncateMarkdown.js"
-import type { ContextGoblinOptions, ProjectState } from "./types.js"
+import type { CacheStats, ContextGoblinOptions, ProjectState } from "./types.js"
 
 const codeFilePattern = /\.(?:[cm]?[jt]sx?|vue|svelte)$/
 const maxCodeMapFiles = 40
+const maxCodeMapCandidates = 400
 
 async function listDirectoryMap(rootDir: string, dir = ".", depth = 0): Promise<string[]> {
   if (depth > 2) return []
@@ -52,12 +53,28 @@ async function listCodeFiles(rootDir: string, dir = "."): Promise<string[]> {
       if (isDeniedPath(relativePath)) continue
       if (dirent.isDirectory()) files.push(...await listCodeFiles(rootDir, relativePath))
       else if (codeFilePattern.test(relativePath)) files.push(relativePath)
-      if (files.length >= maxCodeMapFiles) return files.slice(0, maxCodeMapFiles)
+      if (files.length >= maxCodeMapCandidates) return files.slice(0, maxCodeMapCandidates)
     }
   } catch {
     return []
   }
   return files
+}
+
+function rankCodeFiles(files: string[], entryPoints: string[]): string[] {
+  const entryPointSet = new Set(entryPoints)
+  return files.sort((a, b) => codeFileScore(b, entryPointSet) - codeFileScore(a, entryPointSet) || a.localeCompare(b))
+}
+
+function codeFileScore(file: string, entryPoints: Set<string>): number {
+  let score = 0
+  if (entryPoints.has(file)) score += 100
+  if (/\b(src|app)\//.test(file)) score += 20
+  if (/\b(features|routes?|pages|app|api|components|stores?|state)\b/i.test(file)) score += 20
+  if (/\b(test|tests|spec)\b|\.(test|spec)\./i.test(file)) score += 12
+  if (/\b(index|main|app)\.[cm]?[jt]sx?$/i.test(file)) score += 10
+  if (/\.(tsx|jsx)$/.test(file)) score += 5
+  return score
 }
 
 function unique(values: string[]): string[] {
@@ -85,8 +102,8 @@ function summarizeCodeFile(relativePath: string, text: string): string[] {
   return lines
 }
 
-async function buildCodeMap(rootDir: string): Promise<string[]> {
-  const files = await listCodeFiles(rootDir)
+async function buildCodeMap(rootDir: string, entryPoints: string[]): Promise<{ entries: string[]; files: string[] }> {
+  const files = rankCodeFiles(await listCodeFiles(rootDir), entryPoints).slice(0, maxCodeMapFiles)
   const entries: string[] = []
   for (const file of files) {
     const text = await readTextIfAllowed(rootDir, file)
@@ -97,7 +114,7 @@ async function buildCodeMap(rootDir: string): Promise<string[]> {
       break
     }
   }
-  return entries
+  return { entries, files }
 }
 
 function formatScripts(scripts: Record<string, string>): string {
@@ -112,8 +129,9 @@ export async function generateProjectContext(options: ContextGoblinOptions): Pro
   const stack = await detectStack(rootDir)
   const projectHash = await hashProjectState(rootDir)
   const directoryMap = await listDirectoryMap(rootDir)
-  const codeMap = await buildCodeMap(rootDir)
+  const codeMap = await buildCodeMap(rootDir, stack.entryPoints)
   const agents = await readTextIfAllowed(rootDir, "AGENTS.md")
+  const sections = ["Detected Stack", "Important Commands", "Directory Map", "Code Map", "Safety Exclusions", "Agent Instructions"]
 
   const markdown = truncateMarkdown(redactSecrets(`# Context Goblin Project Cache
 
@@ -138,7 +156,7 @@ ${directoryMap.length ? directoryMap.join("\n") : "- [NEEDS INPUT] No readable p
 
 ## Code Map
 
-${codeMap.length ? codeMap.join("\n") : "- [NEEDS INPUT] No source/test code facts detected."}
+${codeMap.entries.length ? codeMap.entries.join("\n") : "- [NEEDS INPUT] No source/test code facts detected."}
 
 ## Safety Exclusions
 
@@ -157,6 +175,15 @@ Before scanning broad repository files:
 ${agents ? `### Existing AGENTS.md\n\n${agents}` : "No AGENTS.md found."}
 `), maxCacheKb)
 
+  const stats: CacheStats = {
+    cacheBytes: Buffer.byteLength(markdown),
+    cacheLines: markdown.split("\n").length,
+    directoryEntries: directoryMap.length,
+    codeMapFiles: codeMap.files.length,
+    codeMapEntries: codeMap.entries.length,
+    sections,
+  }
+
   await fs.mkdir(path.join(rootDir, path.dirname(CACHE_MARKDOWN)), { recursive: true })
   await fs.writeFile(path.join(rootDir, CACHE_MARKDOWN), markdown)
 
@@ -165,6 +192,7 @@ ${agents ? `### Existing AGENTS.md\n\n${agents}` : "No AGENTS.md found."}
     generatedAt: new Date().toISOString(),
     projectHash: projectHash.hash,
     trackedFiles: projectHash.trackedFiles,
+    stats,
   }
   await fs.writeFile(path.join(rootDir, CACHE_STATE), `${JSON.stringify(state, null, 2)}\n`)
   return state

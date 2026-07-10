@@ -34,6 +34,7 @@ const status = await cacheStatus(root)
 const cachePath = path.join(root, ".opencode/cache/context-goblin/project-context.md")
 const statePath = path.join(root, ".opencode/cache/context-goblin/project-context.state.json")
 const cache = await fs.readFile(cachePath, "utf8")
+const state = JSON.parse(await fs.readFile(statePath, "utf8"))
 await fs.access(statePath)
 
 if (!status.exists || status.stale || status.reason !== "fresh") {
@@ -42,6 +43,9 @@ if (!status.exists || status.stale || status.reason !== "fresh") {
 if (!cache.includes("## Code Map")) throw new Error("Expected Code Map in generated cache")
 if (!cache.includes("src/App.tsx")) throw new Error("Expected source file in generated cache")
 if (cache.includes("super-secret-value")) throw new Error("Secret leaked into generated cache")
+if (!state.stats || state.stats.cacheBytes <= 0 || state.stats.codeMapFiles <= 0) {
+  throw new Error(`Expected cache stats in state, got ${JSON.stringify(state)}`)
+}
 NODE
 
 echo "Context Goblin smoke test passed"

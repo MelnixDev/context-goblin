@@ -42,6 +42,14 @@ describe("generateProjectContext", () => {
     expect(state.generatedAt).toBeTypeOf("string")
     expect(state.projectHash).toBeTypeOf("string")
     expect(state.trackedFiles).toBeInstanceOf(Array)
+    expect(state.stats).toMatchObject({
+      cacheBytes: expect.any(Number),
+      cacheLines: expect.any(Number),
+      directoryEntries: expect.any(Number),
+      codeMapFiles: expect.any(Number),
+      codeMapEntries: expect.any(Number),
+      sections: expect.arrayContaining(["Detected Stack", "Code Map"]),
+    })
   })
 
   it("includes compact source and test code facts", async () => {
@@ -74,5 +82,19 @@ describe("generateProjectContext", () => {
     expect(markdown).toContain("CartDrawer")
     expect(markdown).toContain("tests/cartStore.test.ts")
     expect(markdown).toContain("adds and removes items")
+  })
+
+  it("prioritizes entry points and feature code in the code map", async () => {
+    const root = await tempProject()
+    await writeFile(root, "package.json", JSON.stringify({ scripts: { test: "vitest" } }))
+    await writeFile(root, "src/main.tsx", "export function bootstrap() { return null }")
+    await writeFile(root, "src/features/cart/cartStore.ts", "export function addToCart() { return true }")
+    await writeFile(root, "aaa/lowPriority.ts", "export function lowPriority() { return true }")
+
+    await generateProjectContext({ rootDir: root, maxCacheKb: 12 })
+
+    const markdown = await readFile(root, CACHE_MARKDOWN)
+    expect(markdown.indexOf("src/main.tsx")).toBeLessThan(markdown.indexOf("aaa/lowPriority.ts"))
+    expect(markdown.indexOf("src/features/cart/cartStore.ts")).toBeLessThan(markdown.indexOf("aaa/lowPriority.ts"))
   })
 })

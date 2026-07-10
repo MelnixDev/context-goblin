@@ -53,8 +53,15 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
     for (const row of rows.slice(1)) {
       const cells = row.split("|").map((cell) => cell.trim()).filter(Boolean)
       const result = cells.at(-1)
-      if (!result || !["pass", "fail", "error"].includes(result)) {
+      const allowedResults = reportPath.includes("token-usage") ? ["pass", "mixed", "fail", "error"] : ["pass", "fail", "error"]
+      if (!result || !allowedResults.includes(result)) {
         fail(`${reportPath} has invalid result '${result || ""}' in row: ${row}`)
+      }
+      if (reportPath.includes("token-usage")) {
+        const totalStatus = cells[8]
+        if (result === "pass" && totalStatus !== "pass") {
+          fail(`${reportPath} reports token pass while total-token status is '${totalStatus}': ${row}`)
+        }
       }
       if (cells[1] === "no" && result === "fail") {
         fail(`${reportPath} reports failed baseline as fail instead of error: ${row}`)

@@ -46,6 +46,24 @@ export const ContextGoblin: Plugin = async () => {
           return await fs.readFile(`${projectRoot(context)}/${CACHE_MARKDOWN}`, "utf8")
         },
       }),
+      context_goblin_stats: tool({
+        description: "Read Context Goblin cache status and compact cache statistics.",
+        args: {},
+        async execute(_args, context) {
+          const root = projectRoot(context)
+          const status = await cacheStatus(root)
+          return JSON.stringify({
+            exists: status.exists,
+            stale: status.stale,
+            reason: status.reason,
+            cachePath: status.cachePath,
+            statePath: status.statePath,
+            generatedAt: status.state?.generatedAt,
+            trackedFiles: status.state?.trackedFiles.length ?? 0,
+            stats: status.state?.stats,
+          }, null, 2)
+        },
+      }),
     },
   }
 }
