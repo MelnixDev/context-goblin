@@ -1,6 +1,6 @@
 {
   "name": "context-goblin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "OpenCode plugin that generates a compact, safe project context cache.",
   "type": "module",
   "main": "dist/src/index.js",
@@ -16,14 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:opencode": "bash scripts/smoke-opencode.sh",
-    "check:opencode": "bash scripts/real-opencode-check.sh",
-    "check:opencode:gpt55": "bash scripts/gpt55-cache-check.sh",
-    "check:opencode:gpt55:ab": "bash scripts/gpt55-cache-vs-no-cache.sh",
-    "check:opencode:free-models": "bash scripts/free-models-cache-ab.sh",
-    "check:models:complex": "bash scripts/model-complex-task-ab.sh",
-    "check:models:general": "TASK_KIND=general MODEL_GROUP=${MODEL_GROUP:-standard} bash scripts/model-complex-task-ab.sh",
+    "check:models:general": "bash scripts/model-ab.sh",
     "check:reports": "node scripts/check-reports.mjs",
-    "benchmark": "tsx scripts/benchmark-context-goblin.ts",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run check:reports"
   },
   "keywords": [

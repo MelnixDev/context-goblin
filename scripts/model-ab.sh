@@ -10,8 +10,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 standard_models="openai/gpt-5.5"
 free_models="opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free opencode/nemotron-3-ultra-free opencode/north-mini-code-free"
 other_models="openai/gpt-5.5-fast opencode/gpt-5.5 opencode/gpt-5.4-mini"
-model_group="${MODEL_GROUP:-all}"
-task_kind="${TASK_KIND:-complex}"
+model_group="${MODEL_GROUP:-standard}"
 
 if [ -n "${OPENCODE_MODELS:-}" ]; then
   models="$OPENCODE_MODELS"
@@ -28,20 +27,10 @@ else
   exit 1
 fi
 
-if [ "$task_kind" = "general" ]; then
-  report_path="$repo_root/examples/model-general-ab-report.md"
-  metadata_path="$repo_root/examples/model-general-ab.metadata.tsv"
-  report_title="General Model Context Goblin A/B Report"
-  task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
-elif [ "$task_kind" = "complex" ]; then
-  report_path="$repo_root/examples/model-complex-task-ab-report.md"
-  metadata_path="$repo_root/examples/model-complex-task-ab.metadata.tsv"
-  report_title="Complex Task Context Goblin A/B Report"
-  task_description='Plan adding a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
-else
-  echo "Unknown TASK_KIND: $task_kind"
-  exit 1
-fi
+report_path="$repo_root/examples/model-general-ab-report.md"
+metadata_path="$repo_root/examples/model-general-ab.metadata.tsv"
+report_title="General Model Context Goblin A/B Report"
+task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
 
 mkdir -p "$repo_root/examples"
 
@@ -62,7 +51,7 @@ create_fixture() {
 
   cat > "$root/package.json" <<'JSON'
 {
-  "name": "context-goblin-complex-fixture",
+  "name": "context-goblin-general-fixture",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -185,13 +174,8 @@ safe_name() {
   printf '%s' "$1" | tr '/:' '--' | tr -cd '[:alnum:]._-'
 }
 
-if [ "$task_kind" = "general" ]; then
-  baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
-  goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
-else
-  baseline_prompt='No Context Goblin is available. Use normal OpenCode tools to inspect the smallest files needed to plan adding a "Save for later" feature to the cart. Read package.json, src/App.tsx, src/routes.tsx, src/features/cart/cartStore.ts, src/features/cart/CartDrawer.tsx, src/features/catalog/ProductCard.tsx, src/features/catalog/ProductList.tsx, and tests/cartStore.test.ts. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
-  goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Then inspect only the smallest extra files needed to plan adding a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
-fi
+baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
+goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
 
 if [ "${REUSE_EXISTING:-0}" != "1" ]; then
   for model in $models; do
@@ -206,14 +190,14 @@ if [ "${REUSE_EXISTING:-0}" != "1" ]; then
 export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
 EOF
 
-    baseline_raw="$repo_root/examples/model-complex-task-ab.$name.baseline.events.jsonl"
-    goblin_raw="$repo_root/examples/model-complex-task-ab.$name.goblin.events.jsonl"
+    baseline_raw="$repo_root/examples/model-general-ab.$name.baseline.events.jsonl"
+    goblin_raw="$repo_root/examples/model-general-ab.$name.goblin.events.jsonl"
     baseline_stderr="$tmpdir/baseline.stderr"
     goblin_stderr="$tmpdir/goblin.stderr"
 
-    echo "Running complex baseline: $model"
+    echo "Running general baseline: $model"
     baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr")"
-    echo "Running complex Context Goblin: $model"
+    echo "Running general Context Goblin: $model"
     goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr")"
 
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \

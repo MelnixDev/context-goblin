@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v opencode >/dev/null 2>&1; then
-  echo "opencode CLI not found; skipping smoke test"
-  exit 0
-fi
-
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 npm run build
@@ -16,37 +11,37 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cd "$tmpdir"
-npm init -y >/dev/null
-printf '{"compilerOptions":{"strict":true}}\n' > tsconfig.json
-mkdir -p src .opencode/plugins
-printf 'export const hello = "world";\n' > src/index.ts
+mkdir -p "$tmpdir/src" "$tmpdir/.opencode/plugins"
+printf '{"scripts":{"test":"vitest"},"dependencies":{"react":"latest"}}\n' > "$tmpdir/package.json"
+printf '{"compilerOptions":{"strict":true}}\n' > "$tmpdir/tsconfig.json"
+printf 'export function App() { return null }\n' > "$tmpdir/src/App.tsx"
+printf 'export const hello = "world";\n' > "$tmpdir/src/index.ts"
+printf 'API_KEY=super-secret-value\n' > "$tmpdir/.env"
 
-cat > .opencode/plugins/context-goblin.js <<EOF
+cat > "$tmpdir/.opencode/plugins/context-goblin.js" <<EOF
 export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
 EOF
 
-opencode run --auto --format json "Call context_goblin_refresh, then context_goblin_status, then summarize whether the cache exists." > opencode-refresh.json
+TMPDIR_UNDER_TEST="$tmpdir" node --input-type=module <<'NODE'
+import fs from "node:fs/promises"
+import path from "node:path"
 
-test -f .opencode/cache/context-goblin/project-context.md
-test -f .opencode/cache/context-goblin/project-context.state.json
+import { cacheStatus, generateProjectContext } from "./dist/src/index.js"
 
-if ! grep -q "context_goblin" opencode-refresh.json; then
-  echo "Expected Context Goblin tool activity in OpenCode JSON output"
-  exit 1
-fi
+const root = process.env.TMPDIR_UNDER_TEST
+await generateProjectContext({ rootDir: root })
+const status = await cacheStatus(root)
+const cachePath = path.join(root, ".opencode/cache/context-goblin/project-context.md")
+const statePath = path.join(root, ".opencode/cache/context-goblin/project-context.state.json")
+const cache = await fs.readFile(cachePath, "utf8")
+await fs.access(statePath)
 
-opencode run --auto --format json "List the available Context Goblin tools and call context_goblin_status." > opencode-status.json
-if ! grep -q "context_goblin_status" opencode-status.json; then
-  echo "Expected context_goblin_status in OpenCode JSON output"
-  exit 1
-fi
+if (!status.exists || status.stale || status.reason !== "fresh") {
+  throw new Error(`Expected fresh cache, got ${JSON.stringify(status)}`)
+}
+if (!cache.includes("## Code Map")) throw new Error("Expected Code Map in generated cache")
+if (!cache.includes("src/App.tsx")) throw new Error("Expected source file in generated cache")
+if (cache.includes("super-secret-value")) throw new Error("Secret leaked into generated cache")
+NODE
 
-printf 'API_KEY=super-secret-value\n' > .env
-opencode run --auto --format json "Call context_goblin_refresh. Then verify the generated cache does not include secrets." > opencode-secret.json
-if grep -R "super-secret-value" .opencode/cache/context-goblin/project-context.md >/dev/null 2>&1; then
-  echo "Secret leaked into generated cache"
-  exit 1
-fi
-
-echo "OpenCode smoke test passed"
+echo "Context Goblin smoke test passed"

@@ -1,8 +1,10 @@
 # Context Goblin
 
-OpenCode plugin that creates a compact, safe project-context cache so agents can start from cached project facts instead of rediscovering the repo.
+OpenCode plugin that creates a compact, safe project-context cache so agents can start from cached project facts and a small code map instead of rediscovering the repo.
 
 ## Install
+
+The npm `latest` release is the supported version.
 
 ```json
 {
@@ -38,6 +40,8 @@ Cache files:
 .opencode/cache/context-goblin/project-context.md
 .opencode/cache/context-goblin/project-context.state.json
 ```
+
+The cache includes detected stack, package scripts, a compact directory map, a compact source/test code map, safety exclusions, and project instructions when present.
 
 ## Safety
 
@@ -79,6 +83,13 @@ Run the current general model A/B benchmark:
 MODEL_GROUP=standard npm run check:models:general
 ```
 
+Optional model groups:
+
+```bash
+MODEL_GROUP=free npm run check:models:general
+MODEL_GROUP=all npm run check:models:general
+```
+
 Report:
 
 ```txt
@@ -93,7 +104,7 @@ Latest result using `openai/gpt-5.5`:
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | openai/gpt-5.5 | 16 | 5 | 69% | 68% | 2580 | pass |
 
-Negative token reduction means the Context Goblin run used more input tokens than the baseline. Raw OpenCode event logs are written to `examples/*.events.jsonl` and ignored by git.
+Negative token reduction means the Context Goblin run used more input tokens than the baseline. Raw OpenCode event logs and metadata are ignored by git.
 
 ## License
 
