@@ -5,13 +5,15 @@ import { tool, type Plugin } from "@opencode-ai/plugin"
 import { cacheStatus } from "./cacheStatus.js"
 import { CACHE_MARKDOWN } from "./constants.js"
 import { generateProjectContext } from "./generateProjectContext.js"
-import { compactToolOutput, type OutputCompactionOptions } from "./outputCompaction.js"
+import { compactToolOutput } from "./outputCompaction.js"
+import { resolvePluginOptions } from "./pluginOptions.js"
 
 export { cacheStatus } from "./cacheStatus.js"
 export { detectStack } from "./detectStack.js"
 export { generateProjectContext } from "./generateProjectContext.js"
 export { hashProjectState } from "./hashProjectState.js"
 export { compactToolOutput } from "./outputCompaction.js"
+export { resolvePluginOptions } from "./pluginOptions.js"
 export { isDeniedPath, redactSecrets } from "./security.js"
 export { truncateMarkdown } from "./truncateMarkdown.js"
 
@@ -21,29 +23,11 @@ function projectRoot(context: { directory?: string; worktree?: string }): string
   return process.cwd()
 }
 
-function numberOption(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined
-}
-
-function stringArrayOption(value: unknown): string[] | undefined {
-  return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : undefined
-}
-
-function outputCompactionOptions(options: Record<string, unknown> | undefined): OutputCompactionOptions {
-  return {
-    enabled: options?.compactToolOutputs !== false,
-    thresholdChars: numberOption(options?.compactToolOutputThresholdChars),
-    keepStartChars: numberOption(options?.compactToolOutputKeepStartChars),
-    keepEndChars: numberOption(options?.compactToolOutputKeepEndChars),
-    tools: stringArrayOption(options?.compactToolOutputTools),
-  }
-}
-
 export const ContextGoblin: Plugin = async (_input, options) => {
-  const compaction = outputCompactionOptions(options)
+  const pluginOptions = resolvePluginOptions(options)
   return {
     "tool.execute.after": async (input, output) => {
-      const compacted = compactToolOutput({ tool: input.tool, args: input.args, output: output.output }, compaction)
+      const compacted = compactToolOutput({ tool: input.tool, args: input.args, output: output.output }, pluginOptions.outputCompaction)
       if (!compacted.compacted) return
       output.output = compacted.output
       output.metadata = {

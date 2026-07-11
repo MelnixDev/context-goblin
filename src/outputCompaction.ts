@@ -1,31 +1,21 @@
-export interface OutputCompactionOptions {
-  enabled?: boolean
-  thresholdChars?: number
-  keepStartChars?: number
-  keepEndChars?: number
-  tools?: string[]
-}
+import type { CompactToolOutputInput, CompactToolOutputResult, OutputCompactionOptions, ResolvedOutputCompactionOptions } from "./types.js"
 
-export interface CompactToolOutputInput {
-  tool: string
-  args?: unknown
-  output: string
-}
-
-export interface CompactToolOutputResult {
-  output: string
-  compacted: boolean
-  originalChars: number
-  compactedChars: number
-  omittedChars: number
-}
-
-const defaultOptions = {
+const defaultOptions: ResolvedOutputCompactionOptions = {
   enabled: true,
   thresholdChars: 12_000,
   keepStartChars: 4_000,
   keepEndChars: 2_000,
   tools: ["bash", "grep", "glob"],
+}
+
+export function resolveOutputCompactionOptions(options: OutputCompactionOptions = {}): ResolvedOutputCompactionOptions {
+  return {
+    enabled: options.enabled ?? defaultOptions.enabled,
+    thresholdChars: options.thresholdChars ?? defaultOptions.thresholdChars,
+    keepStartChars: options.keepStartChars ?? defaultOptions.keepStartChars,
+    keepEndChars: options.keepEndChars ?? defaultOptions.keepEndChars,
+    tools: options.tools ?? defaultOptions.tools,
+  }
 }
 
 function commandFromArgs(args: unknown): string | undefined {
@@ -40,7 +30,7 @@ function lineCount(text: string): number {
 }
 
 export function compactToolOutput(input: CompactToolOutputInput, options: OutputCompactionOptions = {}): CompactToolOutputResult {
-  const config = { ...defaultOptions, ...options }
+  const config = resolveOutputCompactionOptions(options)
   const originalChars = input.output.length
   if (!config.enabled || !config.tools.includes(input.tool) || originalChars <= config.thresholdChars) {
     return { output: input.output, compacted: false, originalChars, compactedChars: originalChars, omittedChars: 0 }

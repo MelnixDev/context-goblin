@@ -3,6 +3,44 @@ export interface ContextGoblinOptions {
   maxCacheKb?: number
 }
 
+export interface ContextGoblinPluginOptions {
+  compactToolOutputs?: boolean
+  compactToolOutputThresholdChars?: number
+  compactToolOutputKeepStartChars?: number
+  compactToolOutputKeepEndChars?: number
+  compactToolOutputTools?: string[]
+}
+
+export interface OutputCompactionOptions {
+  enabled?: boolean
+  thresholdChars?: number
+  keepStartChars?: number
+  keepEndChars?: number
+  tools?: string[]
+}
+
+export interface ResolvedOutputCompactionOptions {
+  enabled: boolean
+  thresholdChars: number
+  keepStartChars: number
+  keepEndChars: number
+  tools: string[]
+}
+
+export interface CompactToolOutputInput {
+  tool: string
+  args?: unknown
+  output: string
+}
+
+export interface CompactToolOutputResult {
+  output: string
+  compacted: boolean
+  originalChars: number
+  compactedChars: number
+  omittedChars: number
+}
+
 export interface DetectedStack {
   packageManager: string | "[NEEDS INPUT]"
   languages: string[]

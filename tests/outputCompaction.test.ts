@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { compactToolOutput } from "../src/outputCompaction.js"
+import { compactToolOutput, resolveOutputCompactionOptions } from "../src/outputCompaction.js"
 
 describe("output compaction", () => {
   it("leaves short tool output unchanged", () => {
@@ -8,6 +8,13 @@ describe("output compaction", () => {
 
     expect(result.compacted).toBe(false)
     expect(result.output).toBe(" M README.md\n")
+  })
+
+  it("does not let undefined option fields override defaults", () => {
+    const options = resolveOutputCompactionOptions({ tools: undefined, thresholdChars: undefined })
+
+    expect(options.tools).toEqual(["bash", "grep", "glob"])
+    expect(options.thresholdChars).toBe(12_000)
   })
 
   it("compacts oversized bash output with enough context to continue", () => {
