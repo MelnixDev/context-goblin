@@ -71,6 +71,32 @@ Cache files:
 
 The cache includes detected stack, package scripts, a compact directory map, a ranked source/test code map, safety exclusions, and project instructions when present. The state file also records cache statistics such as byte size, line count, section list, tracked-file count, and code-map coverage.
 
+## Usage
+
+After adding the plugin config:
+
+```txt
+1. Restart OpenCode.
+2. Open the command palette and run "Context Goblin: Show Stats", or type /context-goblin-stats.
+3. If the cache is missing or stale, ask the agent to run context_goblin_refresh.
+4. Ask the agent to use Context Goblin before broad repo discovery.
+```
+
+Recommended prompt:
+
+```txt
+Use Context Goblin before broad repository discovery. Check status, refresh if missing or stale, read the cache, show a short stats summary, then inspect only task-specific files that are still needed.
+```
+
+If the menu command does not appear:
+
+```txt
+1. Confirm config includes both "context-goblin" and "context-goblin/tui".
+2. Confirm npm latest is 0.1.11 or newer.
+3. Fully restart OpenCode after changing config.
+4. Check project config is not overriding global plugin config.
+```
+
 ## Tool Output Compaction
 
 Context Goblin also reduces wasted LLM context from oversized tool outputs. By default, it compacts only large `bash`, `grep`, and `glob` outputs over 12,000 characters. It keeps the beginning and end, records the omitted size in metadata, and tells the agent to rerun a focused command if exact omitted output is required.
