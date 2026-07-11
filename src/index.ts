@@ -16,6 +16,8 @@ export { compactToolOutput } from "./outputCompaction.js"
 export { resolvePluginOptions } from "./pluginOptions.js"
 export { isDeniedPath, redactSecrets } from "./security.js"
 export { truncateMarkdown } from "./truncateMarkdown.js"
+export { tui } from "./tui.js"
+export { formatCacheStatsSummary } from "./tuiStats.js"
 
 function projectRoot(context: { directory?: string; worktree?: string }): string {
   if (context.directory) return context.directory

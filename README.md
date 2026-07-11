@@ -37,6 +37,14 @@ context_goblin_read
 context_goblin_stats
 ```
 
+OpenCode menu/slash command:
+
+```txt
+Context Goblin: Show Stats
+/context-goblin-stats
+/cg-stats
+```
+
 Cache files:
 
 ```txt
