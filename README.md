@@ -15,10 +15,25 @@ The npm `latest` release is the supported version.
 }
 ```
 
+To also enable the OpenCode menu/slash command, load the TUI plugin entrypoint too:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["context-goblin", "context-goblin/tui"]
+}
+```
+
 For local development, build and add a shim:
 
 ```js
 export { default, ContextGoblin } from "file:///absolute/path/to/context-goblin/dist/src/index.js"
+```
+
+For local TUI command development, add a second shim:
+
+```js
+export { tui } from "file:///absolute/path/to/context-goblin/dist/src/tui.js"
 ```
 
 Shim locations:
@@ -44,6 +59,8 @@ Context Goblin: Show Stats
 /context-goblin-stats
 /cg-stats
 ```
+
+The menu command is provided by the separate `context-goblin/tui` plugin entrypoint. Restart OpenCode after changing plugin config.
 
 Cache files:
 
