@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { formatCacheStatsSummary } from "../src/tuiStats.js"
-import type { CacheStatus } from "../src/types.js"
+import { formatCacheStatsSummary } from "../src/tui/statsSummary.js"
+import type { CacheStatus } from "../src/cache/types.js"
 
 describe("tui stats", () => {
   it("formats missing cache status", () => {
