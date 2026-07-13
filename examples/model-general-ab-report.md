@@ -2,7 +2,7 @@
 
 Generated: 2026-07-10T06:47:53.669Z
 OpenCode version: 1.17.18
-Context Goblin version: 0.1.12
+Context Goblin version: 0.1.13
 Model group: standard
 
 ## Tool Output Compaction
