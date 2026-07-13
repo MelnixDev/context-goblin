@@ -15,22 +15,13 @@ The npm `latest` release is the supported version.
 }
 ```
 
-To also enable the OpenCode menu/slash command, load the TUI plugin entrypoint too:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["context-goblin", "context-goblin/tui"]
-}
-```
-
 For local development, build and add a shim:
 
 ```js
 export { default, ContextGoblin } from "file:///absolute/path/to/context-goblin/dist/src/index.js"
 ```
 
-For local TUI command development, add a second shim:
+Optional local TUI experiment shim:
 
 ```js
 export { tui } from "file:///absolute/path/to/context-goblin/dist/src/tui.js"
@@ -52,15 +43,13 @@ context_goblin_read
 context_goblin_stats
 ```
 
-OpenCode menu/slash command:
+OpenCode slash command:
 
 ```txt
-Context Goblin: Show Stats
 /context-goblin-stats
-/cg-stats
 ```
 
-The menu command is provided by the separate `context-goblin/tui` plugin entrypoint. Restart OpenCode after changing plugin config.
+The slash command is registered by the server plugin through OpenCode's native command config. Restart OpenCode after changing plugin config.
 
 Cache files:
 
@@ -77,7 +66,7 @@ After adding the plugin config:
 
 ```txt
 1. Restart OpenCode.
-2. Open the command palette and run "Context Goblin: Show Stats", or type /context-goblin-stats.
+2. Type /context-goblin-stats.
 3. If the cache is missing or stale, ask the agent to run context_goblin_refresh.
 4. Ask the agent to use Context Goblin before broad repo discovery.
 ```
@@ -88,11 +77,11 @@ Recommended prompt:
 Use Context Goblin before broad repository discovery. Check status, refresh if missing or stale, read the cache, show a short stats summary, then inspect only task-specific files that are still needed.
 ```
 
-If the menu command does not appear:
+If the slash command does not appear:
 
 ```txt
-1. Confirm config includes both "context-goblin" and "context-goblin/tui".
-2. Confirm npm latest is 0.1.11 or newer.
+1. Confirm config includes "context-goblin".
+2. Confirm npm latest is 0.1.14 or newer.
 3. Fully restart OpenCode after changing config.
 4. Check project config is not overriding global plugin config.
 ```
