@@ -5,6 +5,7 @@ import { tool } from "@opencode-ai/plugin"
 import { cacheStatus } from "../cache/status.js"
 import { CACHE_MARKDOWN } from "../constants.js"
 import { generateProjectContext } from "../cache/generate.js"
+import { getUsageStats } from "../usage/store.js"
 import { projectRoot } from "./root.js"
 
 export function createContextGoblinTools() {
@@ -49,6 +50,13 @@ export function createContextGoblinTools() {
           trackedFiles: status.state?.trackedFiles.length ?? 0,
           stats: status.state?.stats,
         }, null, 2)
+      },
+    }),
+    context_goblin_usage_stats: tool({
+      description: "Read local Context Goblin token usage rollups from OpenCode step-finish events. Summarize today, last 7 days, last 30 days, and recent daily totals. These are OpenCode event stats, not guaranteed provider billing totals.",
+      args: {},
+      async execute(_args, context) {
+        return JSON.stringify(await getUsageStats(projectRoot(context)), null, 2)
       },
     }),
   }

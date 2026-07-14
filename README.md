@@ -41,24 +41,29 @@ context_goblin_status
 context_goblin_refresh
 context_goblin_read
 context_goblin_stats
+context_goblin_usage_stats
 ```
 
-OpenCode slash command:
+OpenCode slash commands:
 
 ```txt
 /context-goblin-stats
+/context-goblin-usage
 ```
 
-The slash command is registered by the server plugin through OpenCode's native command config. Restart OpenCode after changing plugin config.
+The slash commands are registered by the server plugin through OpenCode's native command config. `/context-goblin-stats` expands to a prompt that calls `context_goblin_status`, then `context_goblin_stats`, and reports cache freshness, size, tracked files, and code-map coverage. `/context-goblin-usage` calls `context_goblin_usage_stats` and summarizes local token usage rollups. Restart OpenCode after changing plugin config.
 
 Cache files:
 
 ```txt
 .opencode/cache/context-goblin/project-context.md
 .opencode/cache/context-goblin/project-context.state.json
+.opencode/cache/context-goblin/usage-state.json
 ```
 
 The cache includes detected stack, package scripts, a compact directory map, a ranked source/test code map, safety exclusions, and project instructions when present. The state file also records cache statistics such as byte size, line count, section list, tracked-file count, and code-map coverage.
+
+The usage state stores local numeric OpenCode token rollups only: step count, hashed session IDs for unique session counts, input/output/reasoning/cache/total tokens, and reported cost when available. It does not store prompts, responses, tool outputs, or file contents.
 
 ## Usage
 
@@ -67,8 +72,9 @@ After adding the plugin config:
 ```txt
 1. Restart OpenCode.
 2. Type /context-goblin-stats.
-3. If the cache is missing or stale, ask the agent to run context_goblin_refresh.
-4. Ask the agent to use Context Goblin before broad repo discovery.
+3. Type /context-goblin-usage to inspect local token usage rollups.
+4. If the cache is missing or stale, ask the agent to run context_goblin_refresh.
+5. Ask the agent to use Context Goblin before broad repo discovery.
 ```
 
 Recommended prompt:
@@ -105,6 +111,31 @@ Configuration:
   }]]
 }
 ```
+
+## Local Usage Stats
+
+Context Goblin records approximate token usage from OpenCode `step_finish` events while the plugin is enabled for a workspace. This is useful for seeing local trends such as today's usage, last 7 days, and last 30 days.
+
+```txt
+context_goblin_usage_stats
+/context-goblin-usage
+```
+
+Tracked numeric fields:
+
+```txt
+input tokens
+output tokens
+reasoning tokens
+cache read tokens
+cache write tokens
+total event tokens
+reported cost
+step count
+unique session count
+```
+
+Important caveat: these are OpenCode event token statistics, not a guaranteed provider billing invoice. Providers may omit fields, report `cost: 0`, or account for cached/reasoning tokens differently.
 
 ## Recommended Agent Flow
 
@@ -172,18 +203,16 @@ Report:
 examples/token-usage-ab-report.md
 ```
 
-Latest real `openai/gpt-5.5` token run:
+Latest real `openai/gpt-5.5` token run on OpenCode `1.17.18` with Context Goblin `0.1.14`:
 
 | Metric | Baseline | Context Goblin | Change | Status |
 | --- | ---: | ---: | ---: | --- |
-| Input tokens | 12,482 | 12,188 | 2% fewer | pass |
-| Total event tokens | 45,585 | 58,374 | 28% more | fail |
-| Files read | 16 | 9 | 44% fewer | pass |
+| Input tokens | 9,202 | 8,131 | 12% fewer | pass |
+| Total event tokens | 51,391 | 56,252 | 9% more | fail |
+| Files read | 15 | 7 | 53% fewer | pass |
 | Cache size | n/a | 2,580 bytes | n/a | pass |
 
-Token result: mixed. Context Goblin reduced file reads and slightly reduced direct input tokens in this run, but total event tokens were higher because provider/OpenCode event accounting includes cache-read, reasoning, and multi-step tool-call records. This is token usage evidence, not a claim of total token-cost reduction.
-
-Note: the committed token report predates tool-output compaction. Run `npm run check:tokens` again after installing `0.1.7+` to measure compaction effects on your OpenCode/provider event accounting.
+Token result: mixed. Context Goblin reduced file reads and direct input tokens in this run, but total event tokens were higher because provider/OpenCode event accounting includes cache-read, reasoning, and multi-step tool-call records. This is token usage evidence, not a claim of total token-cost reduction.
 
 ## Latest A/B Result
 
@@ -208,11 +237,11 @@ examples/model-general-ab-report.md
 
 The benchmark compares a normal OpenCode run against a Context Goblin run on the same synthetic React/Vite cart/catalog app. The baseline is not forced to read a fixed file list; the Context Goblin run must call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before inspecting only missing implementation details.
 
-Latest result using `openai/gpt-5.5`:
+Latest result using `openai/gpt-5.5` on OpenCode `1.17.18` with Context Goblin `0.1.14`:
 
 | Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Cache Size | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 16 | 5 | 69% | 68% | 2580 | pass |
+| openai/gpt-5.5 | 16 | 7 | 56% | 14% | 2580 | pass |
 
 Negative token reduction means the Context Goblin run used more input tokens than the baseline. Raw OpenCode event logs and metadata are ignored by git.
 

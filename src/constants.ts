@@ -3,6 +3,7 @@ export const CACHE_VERSION = "0.1.1"
 export const CACHE_DIR = ".opencode/cache/context-goblin"
 export const CACHE_MARKDOWN = `${CACHE_DIR}/project-context.md`
 export const CACHE_STATE = `${CACHE_DIR}/project-context.state.json`
+export const USAGE_STATE = `${CACHE_DIR}/usage-state.json`
 
 export const DEFAULT_MAX_CACHE_KB = 25
 
