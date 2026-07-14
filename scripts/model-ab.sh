@@ -14,6 +14,7 @@ model_group="${MODEL_GROUP:-standard}"
 
 if [ -n "${OPENCODE_MODELS:-}" ]; then
   models="$OPENCODE_MODELS"
+  model_group="custom"
 elif [ "$model_group" = "standard" ]; then
   models="$standard_models"
 elif [ "$model_group" = "free" ]; then
@@ -94,6 +95,16 @@ MD
 
 Do not read `.env` files. Prefer focused reads and add tests for cart behavior changes.
 MD
+  cat > "$root/opencode.json" <<'JSON'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "task": "deny",
+    "bash": "deny",
+    "edit": "deny"
+  }
+}
+JSON
   cat > "$root/src/main.tsx" <<'TS'
 import { App } from "./App"
 export { App }
@@ -181,8 +192,8 @@ safe_name() {
   printf '%s' "$1" | tr '/:' '--' | tr -cd '[:alnum:]._-'
 }
 
-baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
-goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
+baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Use only built-in read, glob, and grep tools; do not use task/subagents or bash. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
+goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Use only Context Goblin tools and built-in read, glob, and grep tools; do not use task/subagents or bash. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
 
 if [ "${REUSE_EXISTING:-0}" != "1" ]; then
   for model in $models; do
@@ -509,6 +520,13 @@ Model group: ${process.env.MODEL_GROUP_USED}
 ## Task
 
 ${process.env.TASK_DESCRIPTION}
+
+## Protocol
+
+- Each arm receives a fresh copy of the same synthetic fixture.
+- The \`task\`, \`bash\`, and \`edit\` tools are explicitly denied so repository reads remain visible and comparable in the parent OpenCode event stream.
+- Models may use direct \`read\`, \`glob\`, and \`grep\` tools; the Context Goblin arm may additionally use Context Goblin tools.
+- Results are one run per model and arm. Model behavior and provider token accounting can vary between runs.
 
 ## Summary
 
