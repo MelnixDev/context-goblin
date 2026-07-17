@@ -114,7 +114,7 @@ Configuration:
 
 ## Local Usage Stats
 
-Context Goblin records approximate token usage from OpenCode `step_finish` events while the plugin is enabled for a workspace. This is useful for seeing local trends such as today's usage, last 7 days, and last 30 days.
+Context Goblin records approximate token usage from OpenCode `step-finish` message parts while the plugin is enabled for a workspace. This is useful for seeing local trends such as today's usage, last 7 days, and last 30 days.
 
 ```txt
 context_goblin_usage_stats

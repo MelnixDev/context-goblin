@@ -1,23 +1,22 @@
+import type { Event } from "@opencode-ai/sdk"
+
 import { recordUsageStep, tokensFromUnknown } from "../usage/store.js"
 
 export function usageEventHook(root: string) {
-  return async (input: { event: unknown }) => {
-    const event = input.event as {
-      type?: string
-      timestamp?: number
-      sessionID?: string
-      part?: { tokens?: unknown; cost?: number }
-    }
+  return async (input: { event: Event }) => {
+    if (input.event.type !== "message.part.updated") return
 
-    if (event.type !== "step_finish") return
-    const tokens = tokensFromUnknown(event.part?.tokens)
+    const part = input.event.properties.part
+    if (part.type !== "step-finish") return
+
+    const tokens = tokensFromUnknown(part.tokens)
     if (!tokens) return
 
     await recordUsageStep(root, {
-      timestamp: event.timestamp ?? Date.now(),
-      sessionID: event.sessionID,
+      timestamp: Date.now(),
+      sessionID: part.sessionID,
       tokens,
-      cost: event.part?.cost,
+      cost: part.cost,
     })
   }
 }

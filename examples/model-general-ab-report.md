@@ -2,7 +2,7 @@
 
 Generated: 2026-07-14T09:19:53.903Z
 OpenCode version: 1.17.18
-Context Goblin version: 0.1.15
+Context Goblin version: 0.1.16
 Model group: custom
 
 ## Task
