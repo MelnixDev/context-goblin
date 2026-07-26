@@ -19,8 +19,8 @@ async function showStatsToast(api: Parameters<TuiPlugin>[0]): Promise<void> {
 }
 
 export const tui: TuiPlugin = async (api) => {
-  const keymap = api.keymap as unknown as { registerLayer?: (layer: unknown) => () => void }
-  if (typeof keymap.registerLayer === "function") {
+  const keymap = api.keymap as unknown as { registerLayer?: (layer: unknown) => () => void } | undefined
+  if (typeof keymap?.registerLayer === "function") {
     const unregister = keymap.registerLayer({
       commands: [{
         name: commandName,

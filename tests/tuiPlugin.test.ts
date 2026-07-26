@@ -52,7 +52,6 @@ describe("TUI plugin", () => {
   it("falls back to legacy command registration when keymap layers are unavailable", async () => {
     let commands: Array<Record<string, unknown>> = []
     const { api, disposers } = fakeApi({
-      keymap: {},
       command: {
         register(callback: () => Array<Record<string, unknown>>) {
           commands = callback()
