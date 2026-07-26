@@ -123,12 +123,17 @@ export async function getUsageStats(root: string, now = new Date()): Promise<Usa
 export function tokensFromUnknown(input: unknown): UsageTokens | undefined {
   if (!input || typeof input !== "object") return undefined
   const tokens = input as { input?: number; output?: number; reasoning?: number; total?: number; cache?: { read?: number; write?: number } }
+  const inputTokens = tokens.input ?? 0
+  const outputTokens = tokens.output ?? 0
+  const reasoningTokens = tokens.reasoning ?? 0
+  const cacheRead = tokens.cache?.read ?? 0
+  const cacheWrite = tokens.cache?.write ?? 0
   return {
-    input: tokens.input ?? 0,
-    output: tokens.output ?? 0,
-    reasoning: tokens.reasoning ?? 0,
-    cacheRead: tokens.cache?.read ?? 0,
-    cacheWrite: tokens.cache?.write ?? 0,
-    total: tokens.total ?? 0,
+    input: inputTokens,
+    output: outputTokens,
+    reasoning: reasoningTokens,
+    cacheRead,
+    cacheWrite,
+    total: tokens.total ?? inputTokens + outputTokens + reasoningTokens + cacheRead + cacheWrite,
   }
 }

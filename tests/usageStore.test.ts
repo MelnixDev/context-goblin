@@ -58,6 +58,7 @@ describe("usage store", () => {
       cacheWrite: 5,
       total: 10,
     })
+    expect(tokensFromUnknown({ input: 1, output: 2, reasoning: 3, cache: { read: 4, write: 5 } })?.total).toBe(15)
     expect(tokensFromUnknown(undefined)).toBeUndefined()
   })
 

@@ -22,6 +22,6 @@ describe("usage event hook", () => {
     const stats = await getUsageStats(root, new Date("2026-07-13T01:00:00.000Z"))
 
     expect(stats.ranges[0]).toMatchObject({ sessions: 1, steps: 1, cost: 0.5 })
-    expect(stats.ranges[0].tokens).toEqual({ input: 3, output: 2, reasoning: 0, cacheRead: 4, cacheWrite: 0, total: 0 })
+    expect(stats.ranges[0].tokens).toEqual({ input: 3, output: 2, reasoning: 0, cacheRead: 4, cacheWrite: 0, total: 9 })
   })
 })
