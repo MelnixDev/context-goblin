@@ -87,13 +87,14 @@ function dateBefore(date: Date, days: number): Date {
 
 function rangeStats(days: UsageDay[], label: string, rangeDays: number, now: Date): UsageStatsRange {
   const start = dateBefore(now, rangeDays - 1).toISOString().slice(0, 10)
+  const end = now.toISOString().slice(0, 10)
   const sessionHashes = new Set<string>()
   const tokens = emptyTokens()
   let steps = 0
   let cost = 0
 
   for (const day of days) {
-    if (day.date < start) continue
+    if (day.date < start || day.date > end) continue
     steps += day.steps
     cost += day.cost
     addTokens(tokens, day.tokens)

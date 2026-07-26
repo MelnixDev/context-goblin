@@ -60,4 +60,22 @@ describe("usage store", () => {
     })
     expect(tokensFromUnknown(undefined)).toBeUndefined()
   })
+
+  it("excludes future records from usage ranges", async () => {
+    const root = await tempRoot()
+
+    await recordUsageStep(root, {
+      timestamp: Date.parse("2026-07-14T10:00:00.000Z"),
+      sessionID: "future-session",
+      tokens: { input: 10, output: 5, reasoning: 1, cacheRead: 20, cacheWrite: 2, total: 38 },
+      cost: 0.01,
+    })
+
+    const stats = await getUsageStats(root, new Date("2026-07-13T12:00:00.000Z"))
+
+    for (const range of stats.ranges) {
+      expect(range).toMatchObject({ sessions: 0, steps: 0, cost: 0 })
+      expect(range.tokens.total).toBe(0)
+    }
+  })
 })
