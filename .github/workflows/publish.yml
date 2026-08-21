@@ -28,6 +28,6 @@ jobs:
           node-version: 22.22.2
           registry-url: https://registry.npmjs.org
 
-      - run: npx --yes npm@12.0.2 config set allow-scripts=opencode-ai,esbuild,msgpackr-extract --location=user
+      - run: npx --yes npm@12.0.2 config set allow-scripts=opencode-ai,esbuild,msgpackr-extract --location=project
       - run: npx --yes npm@12.0.2 ci
       - run: npx --yes npm@12.0.2 publish --loglevel verbose
