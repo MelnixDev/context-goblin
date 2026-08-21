@@ -2,7 +2,7 @@
 
 Generated: 2026-07-14T09:19:53.903Z
 OpenCode version: 1.17.18
-Context Goblin version: 0.1.17
+Context Goblin version: 0.1.18
 Model group: custom
 
 ## Task
@@ -698,4 +698,3 @@ Not read or recommended for modification:
 
 No files were modified and no commands were executed.
 ```
-

@@ -17,9 +17,17 @@ printf '{"compilerOptions":{"strict":true}}\n' > "$tmpdir/tsconfig.json"
 printf 'export function App() { return null }\n' > "$tmpdir/src/App.tsx"
 printf 'export const hello = "world";\n' > "$tmpdir/src/index.ts"
 printf 'API_KEY=super-secret-value\n' > "$tmpdir/.env"
+mkdir -p "$tmpdir/home" "$tmpdir/xdg"
 
 cat > "$tmpdir/.opencode/plugins/context-goblin.js" <<EOF
-export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
+export { default } from "file://$repo_root/dist/src/index.js"
+EOF
+
+cat > "$tmpdir/opencode.json" <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["./.opencode/plugins/context-goblin.js"]
+}
 EOF
 
 TMPDIR_UNDER_TEST="$tmpdir" node --input-type=module <<'NODE'
@@ -45,6 +53,21 @@ if (!cache.includes("src/App.tsx")) throw new Error("Expected source file in gen
 if (cache.includes("super-secret-value")) throw new Error("Secret leaked into generated cache")
 if (!state.stats || state.stats.cacheBytes <= 0 || state.stats.codeMapFiles <= 0) {
   throw new Error(`Expected cache stats in state, got ${JSON.stringify(state)}`)
+}
+NODE
+
+resolved_config="$({
+  cd "$tmpdir"
+  HOME="$tmpdir/home" \
+    XDG_CONFIG_HOME="$tmpdir/xdg" \
+    OPENCODE_DISABLE_DEFAULT_PLUGINS=1 \
+    opencode debug config
+})"
+
+RESOLVED_CONFIG="$resolved_config" node --input-type=module <<'NODE'
+const config = JSON.parse(process.env.RESOLVED_CONFIG)
+for (const name of ["context-goblin-stats", "context-goblin-usage"]) {
+  if (!config.command?.[name]) throw new Error(`OpenCode did not register ${name}`)
 }
 NODE
 
