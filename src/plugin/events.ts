@@ -12,11 +12,15 @@ export function usageEventHook(root: string) {
     const tokens = tokensFromUnknown(part.tokens)
     if (!tokens) return
 
-    await recordUsageStep(root, {
-      timestamp: Date.now(),
-      sessionID: part.sessionID,
-      tokens,
-      cost: part.cost,
-    })
+    try {
+      await recordUsageStep(root, {
+        timestamp: Date.now(),
+        sessionID: part.sessionID,
+        tokens,
+        cost: part.cost,
+      })
+    } catch {
+      // Usage telemetry must never interrupt the OpenCode event lifecycle.
+    }
   }
 }

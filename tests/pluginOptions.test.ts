@@ -10,7 +10,7 @@ describe("plugin options", () => {
     })
 
     expect(options.outputCompaction).toEqual({
-      enabled: true,
+      enabled: false,
       thresholdChars: undefined,
       keepStartChars: undefined,
       keepEndChars: undefined,
@@ -18,9 +18,9 @@ describe("plugin options", () => {
     })
   })
 
-  it("allows disabling output compaction", () => {
-    const options = resolvePluginOptions({ compactToolOutputs: false })
+  it("allows opting into output compaction", () => {
+    const options = resolvePluginOptions({ compactToolOutputs: true })
 
-    expect(options.outputCompaction.enabled).toBe(false)
+    expect(options.outputCompaction.enabled).toBe(true)
   })
 })

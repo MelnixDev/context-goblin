@@ -12,6 +12,19 @@ async function tempRoot() {
 }
 
 describe("usage store", () => {
+  it("serializes concurrent usage writes", async () => {
+    const root = await tempRoot()
+    await Promise.all(Array.from({ length: 20 }, (_, index) => recordUsageStep(root, {
+      timestamp: Date.parse("2026-07-13T10:00:00.000Z") + index,
+      sessionID: `session-${index}`,
+      tokens: { input: 1, output: 1, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: 2 },
+    })))
+
+    const stats = await getUsageStats(root, new Date("2026-07-13T12:00:00.000Z"))
+    expect(stats.ranges[0]).toMatchObject({ sessions: 20, steps: 20 })
+    expect(stats.ranges[0].tokens.total).toBe(40)
+  })
+
   it("aggregates token usage by day and unique session", async () => {
     const root = await tempRoot()
 

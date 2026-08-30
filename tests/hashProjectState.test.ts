@@ -42,13 +42,21 @@ describe("hashProjectState", () => {
         expect(after.hash).not.toBe(before.hash)
     })
 
-    it("ignores non-relevant and node_modules file changes", async () => {
+    it("tracks source changes in git while ignoring node_modules", async () => {
         const root = await tempProject()
+        await execFileAsync("git", ["init"], { cwd: root })
+        await execFileAsync("git", ["config", "user.email", "test@example.com"], { cwd: root })
+        await execFileAsync("git", ["config", "user.name", "Test"], { cwd: root })
         await writeFile(root, "package.json", JSON.stringify({ name: "x" }))
+        await writeFile(root, "src/index.ts", "initial")
+        await execFileAsync("git", ["add", "."], { cwd: root })
+        await execFileAsync("git", ["commit", "-m", "initial"], { cwd: root })
         const before = await hashProjectState(root)
         await writeFile(root, "src/index.ts", "changed")
+        const afterSource = await hashProjectState(root)
+        expect(afterSource.hash).not.toBe(before.hash)
         await writeFile(root, "node_modules/pkg/index.js", "changed")
         const after = await hashProjectState(root)
-        expect(after.hash).toBe(before.hash)
+        expect(after.hash).toBe(afterSource.hash)
     })
 })

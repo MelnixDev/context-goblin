@@ -8,6 +8,7 @@ import type { UsageDay, UsageState, UsageStats, UsageStatsRange, UsageTokens } f
 const emptyTokens = (): UsageTokens => ({ input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: 0 })
 
 const emptyState = (): UsageState => ({ version: 1, days: {} })
+const writeQueues = new Map<string, Promise<void>>()
 
 function usageStatePath(root: string): string {
   return path.join(root, USAGE_STATE)
@@ -44,7 +45,9 @@ async function readUsageState(root: string): Promise<UsageState> {
 async function writeUsageState(root: string, state: UsageState): Promise<void> {
   const statePath = usageStatePath(root)
   await fs.mkdir(path.dirname(statePath), { recursive: true })
-  await fs.writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`)
+  const temporaryPath = `${statePath}.${process.pid}.${crypto.randomUUID()}.tmp`
+  await fs.writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`)
+  await fs.rename(temporaryPath, statePath)
 }
 
 function normalizeDay(date: string, day?: Partial<UsageDay>): UsageDay {
@@ -63,20 +66,29 @@ export async function recordUsageStep(root: string, input: {
   tokens: UsageTokens
   cost?: number
 }): Promise<void> {
-  const state = await readUsageState(root)
-  const date = isoDate(input.timestamp)
-  const day = normalizeDay(date, state.days[date])
-  day.steps += 1
-  addTokens(day.tokens, input.tokens)
-  day.cost += input.cost ?? 0
+  const previous = writeQueues.get(root) ?? Promise.resolve()
+  const current = previous.catch(() => undefined).then(async () => {
+    const state = await readUsageState(root)
+    const date = isoDate(input.timestamp)
+    const day = normalizeDay(date, state.days[date])
+    day.steps += 1
+    addTokens(day.tokens, input.tokens)
+    day.cost += input.cost ?? 0
 
-  if (input.sessionID) {
-    const hashed = sessionHash(input.sessionID)
-    if (!day.sessionHashes.includes(hashed)) day.sessionHashes.push(hashed)
+    if (input.sessionID) {
+      const hashed = sessionHash(input.sessionID)
+      if (!day.sessionHashes.includes(hashed)) day.sessionHashes.push(hashed)
+    }
+
+    state.days[date] = day
+    await writeUsageState(root, state)
+  })
+  writeQueues.set(root, current)
+  try {
+    await current
+  } finally {
+    if (writeQueues.get(root) === current) writeQueues.delete(root)
   }
-
-  state.days[date] = day
-  await writeUsageState(root, state)
 }
 
 function dateBefore(date: Date, days: number): Date {

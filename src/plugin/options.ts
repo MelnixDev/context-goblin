@@ -12,7 +12,7 @@ export function resolvePluginOptions(options: Record<string, unknown> | undefine
   const typed = options as ContextGoblinPluginOptions | undefined
   return {
     outputCompaction: {
-      enabled: typed?.compactToolOutputs !== false,
+      enabled: typed?.compactToolOutputs === true,
       thresholdChars: numberOption(typed?.compactToolOutputThresholdChars),
       keepStartChars: numberOption(typed?.compactToolOutputKeepStartChars),
       keepEndChars: numberOption(typed?.compactToolOutputKeepEndChars),

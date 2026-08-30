@@ -15,11 +15,12 @@ describe("output compaction", () => {
 
     expect(options.tools).toEqual(["bash", "grep", "glob"])
     expect(options.thresholdChars).toBe(12_000)
+    expect(options.enabled).toBe(false)
   })
 
   it("compacts oversized bash output with enough context to continue", () => {
     const output = `${"a".repeat(5000)}\n${"b".repeat(5000)}\n${"c".repeat(5000)}`
-    const result = compactToolOutput({ tool: "bash", args: { command: "git diff" }, output }, { thresholdChars: 1000, keepStartChars: 100, keepEndChars: 50 })
+    const result = compactToolOutput({ tool: "bash", args: { command: "git diff" }, output }, { enabled: true, thresholdChars: 1000, keepStartChars: 100, keepEndChars: 50 })
 
     expect(result.compacted).toBe(true)
     expect(result.output).toContain("Context Goblin compacted oversized bash output")

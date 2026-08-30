@@ -2,7 +2,8 @@ import { compactToolOutput } from "../compaction/outputCompaction.js"
 import type { OutputCompactionOptions } from "../compaction/types.js"
 
 export function compactToolOutputAfterHook(outputCompaction: OutputCompactionOptions) {
-  return async (input: { tool: string; args: unknown }, output: { output: string; metadata: unknown }) => {
+  return async (input: { tool: string; args: unknown }, output: { output?: unknown; metadata?: unknown }) => {
+    if (typeof output.output !== "string") return
     const compacted = compactToolOutput({ tool: input.tool, args: input.args, output: output.output }, outputCompaction)
     if (!compacted.compacted) return
     output.output = compacted.output

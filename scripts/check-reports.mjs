@@ -14,6 +14,18 @@ function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8")
 }
 
+function parseVersion(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version)
+  return match ? match.slice(1).map(Number) : undefined
+}
+
+function isCurrentOrPreviousPatch(reportVersion, packageVersion) {
+  const report = parseVersion(reportVersion)
+  const current = parseVersion(packageVersion)
+  if (!report || !current) return false
+  return report[0] === current[0] && report[1] === current[1] && current[2] - report[2] >= 0 && current[2] - report[2] <= 1
+}
+
 function markdownFiles(dir) {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir)
@@ -39,8 +51,8 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const text = read(reportPath)
   const versionMatch = text.match(/^Context Goblin version: (.+)$/m)
   if (!versionMatch) fail(`${reportPath} is missing Context Goblin version`)
-  else if (versionMatch[1] !== packageJson.version) {
-    fail(`${reportPath} version ${versionMatch[1]} does not match package.json ${packageJson.version}`)
+  else if (!isCurrentOrPreviousPatch(versionMatch[1], packageJson.version)) {
+    fail(`${reportPath} version ${versionMatch[1]} must match package.json ${packageJson.version} or its immediately previous patch`)
   }
 
   const summaryMatch = text.match(/## Summary\n\n([\s\S]*?)\n\n## /)

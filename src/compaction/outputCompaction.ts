@@ -1,7 +1,7 @@
 import type { CompactToolOutputInput, CompactToolOutputResult, OutputCompactionOptions, ResolvedOutputCompactionOptions } from "./types.js"
 
 const defaultOptions: ResolvedOutputCompactionOptions = {
-  enabled: true,
+  enabled: false,
   thresholdChars: 12_000,
   keepStartChars: 4_000,
   keepEndChars: 2_000,
@@ -31,6 +31,9 @@ function lineCount(text: string): number {
 
 export function compactToolOutput(input: CompactToolOutputInput, options: OutputCompactionOptions = {}): CompactToolOutputResult {
   const config = resolveOutputCompactionOptions(options)
+  if (typeof input.output !== "string") {
+    return { output: "", compacted: false, originalChars: 0, compactedChars: 0, omittedChars: 0 }
+  }
   const originalChars = input.output.length
   if (!config.enabled || !config.tools.includes(input.tool) || originalChars <= config.thresholdChars) {
     return { output: input.output, compacted: false, originalChars, compactedChars: originalChars, omittedChars: 0 }

@@ -24,4 +24,12 @@ describe("usage event hook", () => {
     expect(stats.ranges[0]).toMatchObject({ sessions: 1, steps: 1, cost: 0.5 })
     expect(stats.ranges[0].tokens).toEqual({ input: 3, output: 2, reasoning: 0, cacheRead: 4, cacheWrite: 0, total: 9 })
   })
+
+  it("does not interrupt OpenCode when usage telemetry cannot be written", async () => {
+    const rootFile = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "context-goblin-readonly-")), "not-a-directory")
+    await fs.writeFile(rootFile, "blocking file")
+    const hook = usageEventHook(rootFile)
+
+    await expect(hook({ event: { type: "message.part.updated", properties: { part: { id: "step", sessionID: "s", messageID: "m", type: "step-finish", reason: "stop", tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }, cost: 0 } } } })).resolves.toBeUndefined()
+  })
 })
