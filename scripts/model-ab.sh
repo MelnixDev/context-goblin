@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v opencode >/dev/null 2>&1; then
-  echo "opencode CLI not found"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+opencode_bin="${OPENCODE_BIN:-$repo_root/node_modules/.bin/opencode}"
+if [ ! -x "$opencode_bin" ]; then
+  echo "opencode CLI not found or not executable: $opencode_bin"
   exit 1
 fi
-
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 standard_models="openai/gpt-5.5"
 free_models="opencode/deepseek-v4-flash-free opencode/mimo-v2.5-free opencode/nemotron-3-ultra-free opencode/north-mini-code-free"
 other_models="openai/gpt-5.5-fast opencode/gpt-5.5 opencode/gpt-5.4-mini"
@@ -178,10 +178,11 @@ run_opencode() {
   local prompt="$3"
   local output="$4"
   local stderr_file="$5"
+  local xdg_config="$6"
   local started ended exit_code
   started="$(date +%s)"
   set +e
-  opencode run --model "$model" --auto --format json --dir "$root" "$prompt" > "$output" 2> "$stderr_file"
+  XDG_CONFIG_HOME="$xdg_config" "$opencode_bin" run --model "$model" --auto --format json --dir "$root" "$prompt" > "$output" 2> "$stderr_file"
   exit_code="$?"
   set -e
   ended="$(date +%s)"
@@ -199,13 +200,14 @@ if [ "${REUSE_EXISTING:-0}" != "1" ]; then
   for model in $models; do
     name="$(safe_name "$model")"
     tmpdir="$(mktemp -d)"
+    xdg_config="$tmpdir/xdg"
     baseline_dir="$tmpdir/baseline"
     goblin_dir="$tmpdir/goblin"
-    mkdir -p "$baseline_dir" "$goblin_dir/.opencode/plugins"
+    mkdir -p "$xdg_config" "$baseline_dir" "$goblin_dir/.opencode/plugins"
     create_fixture "$baseline_dir"
     create_fixture "$goblin_dir"
     cat > "$goblin_dir/.opencode/plugins/context-goblin.js" <<EOF
-export { default, ContextGoblin } from "file://$repo_root/dist/src/index.js"
+export { ContextGoblin as default } from "file://$repo_root/dist/src/index.js"
 EOF
 
     raw_prefix="model-general-ab"
@@ -216,9 +218,9 @@ EOF
     goblin_stderr="$tmpdir/goblin.stderr"
 
     echo "Running general baseline: $model"
-    baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr")"
+    baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr" "$xdg_config")"
     echo "Running general Context Goblin: $model"
-    goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr")"
+    goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr" "$xdg_config")"
 
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$model" "$baseline_dir" "$goblin_dir" "$baseline_raw" "$goblin_raw" \
@@ -227,7 +229,7 @@ EOF
   done
 fi
 
-OPENCODE_VERSION="$(opencode --version 2>/dev/null || printf 'not available')" \
+OPENCODE_VERSION="$("$opencode_bin" --version 2>/dev/null || printf 'not available')" \
 REPO_ROOT="$repo_root" \
 METADATA_PATH="$metadata_path" \
 REPORT_PATH="$report_path" \

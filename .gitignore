@@ -6,6 +6,7 @@ benchmark-results/
 .DS_Store
 examples/*.events.jsonl
 examples/*.metadata.tsv
+examples/*.result.json
 
 !tests/fixtures/large-repo/node_modules/
 !tests/fixtures/large-repo/node_modules/**

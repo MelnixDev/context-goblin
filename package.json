@@ -26,8 +26,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:opencode": "bash scripts/smoke-opencode.sh",
+    "smoke:opencode:live": "bash scripts/smoke-opencode-live.sh",
     "check:models:general": "bash scripts/model-ab.sh",
     "check:tokens": "TOKEN_REPORT=1 bash scripts/model-ab.sh",
+    "benchmark:stable": "npm run build && node scripts/model-ab-stable.mjs",
     "check:reports": "node scripts/check-reports.mjs",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run smoke:opencode && npm run check:reports"
   },

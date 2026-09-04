@@ -46,7 +46,7 @@ for (const filePath of markdownFiles(examplesDir)) {
   }
 }
 
-for (const reportPath of ["examples/model-general-ab-report.md", "examples/token-usage-ab-report.md"]) {
+for (const reportPath of ["examples/model-general-ab-report.md", "examples/token-usage-ab-report.md", "examples/model-stability-ab-report.md"]) {
 if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const text = read(reportPath)
   const versionMatch = text.match(/^Context Goblin version: (.+)$/m)
@@ -55,9 +55,10 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
     fail(`${reportPath} version ${versionMatch[1]} must match package.json ${packageJson.version} or its immediately previous patch`)
   }
 
+  const stabilityDeferred = reportPath.includes("stability") && /Deferred — the repeated agentic run is not a valid performance result yet/i.test(text)
   const summaryMatch = text.match(/## Summary\n\n([\s\S]*?)\n\n## /)
-  if (!summaryMatch) fail(`${reportPath} is missing a summary table`)
-  else {
+  if (!summaryMatch && !stabilityDeferred) fail(`${reportPath} is missing a summary table`)
+  if (summaryMatch) {
     if (reportPath.includes("token-usage") && !summaryMatch[1].includes("Baseline Input")) {
       fail(`${reportPath} is missing token usage columns`)
     }
@@ -65,7 +66,7 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
     for (const row of rows.slice(1)) {
       const cells = row.split("|").map((cell) => cell.trim()).filter(Boolean)
       const result = cells.at(-1)
-      const allowedResults = reportPath.includes("token-usage") ? ["pass", "mixed", "fail", "error"] : ["pass", "fail", "error"]
+      const allowedResults = reportPath.includes("token-usage") || reportPath.includes("stability") ? ["pass", "mixed", "fail", "error"] : ["pass", "fail", "error"]
       if (!result || !allowedResults.includes(result)) {
         fail(`${reportPath} has invalid result '${result || ""}' in row: ${row}`)
       }
@@ -78,6 +79,15 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
       if (cells[1] === "no" && result === "fail") {
         fail(`${reportPath} reports failed baseline as fail instead of error: ${row}`)
       }
+    }
+  }
+
+  if (reportPath.includes("stability")) {
+    const deferred = /Deferred — the repeated agentic run is not a valid performance result yet/i.test(text)
+    const hasValidEvidence = /Valid evidence already available/i.test(text)
+    const hasReproduction = /npm run benchmark:stable/i.test(text)
+    if (!deferred || !hasValidEvidence || !hasReproduction) {
+      fail(`${reportPath} must explicitly distinguish deferred stability runs from valid evidence`)
     }
   }
 }

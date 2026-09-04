@@ -87,7 +87,7 @@ If the slash command does not appear:
 
 ```txt
 1. Confirm config includes "context-goblin".
-2. Confirm npm latest is 0.1.15 or newer.
+2. Confirm npm latest is 0.1.19 or newer.
 3. Fully restart OpenCode after changing config.
 4. Check project config is not overriding global plugin config.
 ```
@@ -187,9 +187,13 @@ npm run test
 npm run build
 npm run check:reports
 npm run smoke:opencode
+npm run smoke:opencode:live
+npm run benchmark:stable
 npm run check:models:general
 npm run check:tokens
 ```
+
+`smoke:opencode:live` runs a real headless OpenCode model session and requires configured provider credentials. Override its defaults with `OPENCODE_MODEL` or `OPENCODE_BIN`.
 
 ## Token Usage Evidence
 
@@ -205,14 +209,14 @@ Report:
 examples/token-usage-ab-report.md
 ```
 
-Latest real comparison on OpenCode `1.17.18` with Context Goblin `0.1.15`:
+Latest real comparison on OpenCode `1.18.20` with Context Goblin `0.1.19`:
 
 | Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Quality | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 19,815 | 7,056 | 64% | 38,930 | 45,954 | -18% | 16 | 8 | 50% | 6/6 | mixed |
-| openai/gpt-5.6-sol | 24,917 | 7,272 | 71% | 148,523 | 37,747 | 75% | 16 | 9 | 44% | 6/6 | pass |
+| openai/gpt-5.5 | 10,290 | 15,661 | -52% | 37,406 | 35,282 | 6% | 15 | 8 | 47% | 6/6 | mixed |
+| openai/gpt-5.6-sol | 16,143 | 16,142 | 0% | 33,956 | 39,715 | -17% | 17 | 13 | 24% | 6/6 | mixed |
 
-In this token-focused run, Context Goblin reduced direct input tokens and file reads for both models while preserving quality. `gpt-5.6-sol` produced the strongest total-token result: 71% fewer input tokens, 75% fewer total event tokens, and 44% fewer file reads. `gpt-5.5` used 64% fewer input tokens and 50% fewer file reads, but its total event tokens increased by 18%, so its result remains `mixed`.
+In this token-focused run, Context Goblin reduced direct file reads for both models while preserving quality `6/6` and avoiding secret leakage. Token accounting was mixed: `gpt-5.5` used 52% more input tokens but 6% fewer total event tokens, while `gpt-5.6-sol` had effectively unchanged input tokens and 17% more total event tokens.
 
 Total event tokens include provider/OpenCode cache-read, reasoning, output, and multi-step records. This is token usage evidence, not a guaranteed billing or total token-cost reduction claim.
 
@@ -239,16 +243,28 @@ examples/model-general-ab-report.md
 
 The benchmark compares a normal OpenCode run against a Context Goblin run on the same synthetic React/Vite cart/catalog app. Each arm receives a fresh fixture. The `task`, `bash`, and `edit` tools are denied so repository reads remain visible and comparable in the parent event stream. Both arms may use direct `read`, `glob`, and `grep`; the Context Goblin arm must call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before inspecting missing implementation details.
 
-Latest results on OpenCode `1.17.18` with Context Goblin `0.1.15`:
+Latest results on OpenCode `1.18.20` with Context Goblin `0.1.19`:
 
 | Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 15 | 8 | 47% | 58% | 6% | 6/6 | 2,596 bytes | pass |
-| openai/gpt-5.6-sol | 17 | 14 | 18% | -2% | -30% | 6/6 | 2,596 bytes | pass |
+| openai/gpt-5.5 | 16 | 7 | 56% | 8% | 26% | 6/6 | 2,598 bytes | pass |
+| openai/gpt-5.6-sol | 17 | 14 | 18% | 34% | -11% | 6/6 | 2,598 bytes | pass |
 
-In the general run, both models completed successfully with quality `6/6` and no detected secret leakage. `gpt-5.5` showed the larger efficiency gain in this sample. `gpt-5.6-sol` still reduced file reads by 18%, but used 2% more input tokens and 30% more total event tokens.
+In the general run, both models completed successfully with quality `6/6` and no detected secret leakage. `gpt-5.5` reduced file reads by 56%, input tokens by 8%, and total event tokens by 26%. `gpt-5.6-sol` reduced file reads by 18% and input tokens by 34%, while total event tokens increased by 11%.
 
 These are single runs per model and arm, so model behavior and provider accounting can vary. Negative reduction means the Context Goblin arm used more than the baseline. Raw OpenCode event logs and metadata are ignored by git; the generated Markdown reports are committed.
+
+## Repeated Stability Evidence
+
+The repeated runner is available as `npm run benchmark:stable`. It uses fresh fixture
+copies, alternating execution order, one cold-cache refresh control, and warm-cache
+rounds. It fails closed rather than turning provider/session timeouts into metrics.
+
+The current report is [examples/model-stability-ab-report.md](./examples/model-stability-ab-report.md).
+The short live smoke and one-shot A/B evidence are valid and documented above; the
+longer repeated agentic protocol is currently deferred because OpenCode stalled before
+its first event on both tested models. Therefore no repeatable multi-run savings claim
+is made yet.
 
 ## License
 
