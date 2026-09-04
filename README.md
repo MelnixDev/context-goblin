@@ -200,7 +200,7 @@ npm run check:tokens
 
 `smoke:opencode:live` runs a real headless OpenCode model session and requires configured provider credentials. Override its defaults with `OPENCODE_MODEL` or `OPENCODE_BIN`.
 
-## Token Usage Evidence
+## Latest A/B Evidence
 
 ### How results are judged
 
@@ -216,32 +216,13 @@ npm run check:tokens
 - We do not claim guaranteed token savings from one-shot results. Repeatable savings
   require a completed multi-run stability benchmark.
 
-Run the current coding-model token comparison:
+Run the current coding-model comparison:
 
 ```bash
 OPENCODE_MODELS="openai/gpt-5.5 openai/gpt-5.6-sol" npm run check:tokens
 ```
 
-Report:
-
-```txt
-examples/token-usage-ab-report.md
-```
-
-Latest real comparison on OpenCode `1.18.20` with Context Goblin `0.1.20`:
-
-| Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Quality | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 13,145 | 9,530 | 28% | 48,093 | 25,356 | 47% | 16 | 9 | 44% | 6/6 | pass |
-| openai/gpt-5.6-sol | 11,840 | 6,496 | 45% | 41,531 | 27,056 | 35% | 17 | 11 | 35% | 6/6 | pass |
-
-With the single-call `context_goblin_get` flow, both models passed every measured efficiency criterion while preserving quality `6/6` and avoiding secret leakage. `gpt-5.5` reduced file reads by 44%, input tokens by 28%, and total event tokens by 47%. `gpt-5.6-sol` reduced file reads by 35%, input tokens by 45%, and total event tokens by 35%.
-
-Total event tokens include provider/OpenCode cache-read, reasoning, output, and multi-step records. This is token usage evidence, not a guaranteed billing or total token-cost reduction claim.
-
-## Latest A/B Result
-
-Run the same coding-model comparison for the general A/B benchmark:
+The general A/B form is also available:
 
 ```bash
 OPENCODE_MODELS="openai/gpt-5.5 openai/gpt-5.6-sol" npm run check:models:general
@@ -254,24 +235,32 @@ MODEL_GROUP=free npm run check:models:general
 MODEL_GROUP=all npm run check:models:general
 ```
 
-Report:
+Both reports use the same fresh-fixture A/B protocol. The token report emphasizes
+accounting; the general report emphasizes completion and quality. Each arm denies
+`task`, `bash`, and `edit`, and the Goblin arm uses the single low-overhead
+`context_goblin_get` call before focused reads.
 
-```txt
-examples/model-general-ab-report.md
-```
-
-The benchmark compares a normal OpenCode run against a Context Goblin run on the same synthetic React/Vite cart/catalog app. Each arm receives a fresh fixture. The `task`, `bash`, and `edit` tools are denied so repository reads remain visible and comparable in the parent event stream. Both arms may use direct `read`, `glob`, and `grep`; the Context Goblin arm must call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before inspecting missing implementation details.
-
-Latest results on OpenCode `1.18.20` with Context Goblin `0.1.20`:
+Latest comparison on OpenCode `1.18.20` with Context Goblin `0.1.20`:
 
 | Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Compatibility | Overall Efficiency |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | openai/gpt-5.5 | 16 | 9 | 44% | 28% | 47% | 6/6 | 2,587 bytes | pass | pass |
 | openai/gpt-5.6-sol | 17 | 11 | 35% | 45% | 35% | 6/6 | 2,587 bytes | pass | pass |
 
-In the general run, compatibility and overall efficiency passed for both models with quality `6/6` and no detected secret leakage. All reported reductions are positive; any future negative reduction makes the overall efficiency result `mixed` or `fail`, never `pass`.
+Both models passed compatibility and overall efficiency with quality `6/6`, no secret
+leakage, and positive reductions across all measured signals:
 
-These are single runs per model and arm, so model behavior and provider accounting can vary. Negative reduction means the Context Goblin arm used more than the baseline. Raw OpenCode event logs and metadata are ignored by git; the generated Markdown reports are committed.
+- `gpt-5.5`: files `−44%`, input `−28%`, total `−47%`.
+- `gpt-5.6-sol`: files `−35%`, input `−45%`, total `−35%`.
+
+Detailed reports: [general A/B](./examples/model-general-ab-report.md) and
+[token usage](./examples/token-usage-ab-report.md). Total event tokens include
+provider/OpenCode cache-read, reasoning, output, and multi-step records; this is
+evidence, not a guaranteed billing invoice.
+
+These are single runs per model and arm. Any future negative reduction is reported as
+`fail`, never as a successful efficiency result. Raw OpenCode event logs and metadata
+are ignored by git; the generated Markdown reports are committed.
 
 ## Repeated Stability Evidence
 
