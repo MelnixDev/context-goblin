@@ -194,7 +194,7 @@ safe_name() {
 }
 
 baseline_prompt='No Context Goblin is available. Inspect the repository as needed to plan where and how to add a "Save for later" feature to the cart. Use only built-in read, glob, and grep tools; do not use task/subagents or bash. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected, implementation plan, risks, tests, and safety exclusions.'
-goblin_prompt='Use Context Goblin first. Call context_goblin_status. If missing or stale, call context_goblin_refresh. Call context_goblin_read. Use the cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Use only Context Goblin tools and built-in read, glob, and grep tools; do not use task/subagents or bash. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
+goblin_prompt='Use Context Goblin first. Call context_goblin_get once; do not call Context Goblin status, refresh, read, or stats separately. Use the returned cache to avoid broad discovery reads, then inspect only files whose implementation details are still missing. Use only Context Goblin tools and built-in read, glob, and grep tools; do not use task/subagents or bash. Plan where and how to add a "Save for later" feature to the cart. Do not read .env. Do not modify files. Return stack, commands, entry points, exact files inspected or recommended, implementation plan, risks, tests, and safety exclusions.'
 
 if [ "${REUSE_EXISTING:-0}" != "1" ]; then
   for model in $models; do
@@ -400,25 +400,32 @@ const results = rows.map((row) => {
   const q = quality(goblin.text)
   const baselineError = row.baselineExit !== 0 || baseline.errors.length > 0
   const goblinError = row.goblinExit !== 0 || goblin.errors.length > 0
-  const toolUseOk = Boolean(goblin.toolCounts.context_goblin_status && goblin.toolCounts.context_goblin_refresh && goblin.toolCounts.context_goblin_read && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
+  const toolUseOk = Boolean(goblin.toolCounts.context_goblin_get === 1 && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
   const answerOk = q.score >= 4 && q.required.length === requiredQualityChecks.length && q.disqualified.length === 0
   const baselineOk = !baselineError
   const goblinOk = !goblinError && toolUseOk && answerOk
   const fileStatus = metricStatus(baseline.files.length, goblin.files.length)
   const inputStatus = metricStatus(baseline.inputTokens, goblin.inputTokens)
   const totalStatus = metricStatus(baseline.totalTokens, goblin.totalTokens)
-  const generalResult = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
-  const tokenResult = baselineError || goblinError ? "error" : answerOk && fileStatus === "pass" && inputStatus === "pass" && totalStatus === "pass" ? "pass" : answerOk && (fileStatus === "pass" || inputStatus === "pass") ? "mixed" : "fail"
-  return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result: process.env.TOKEN_REPORT === "1" ? tokenResult : generalResult, cacheSize, secretLeakage, quality: q, fileStatus, inputStatus, totalStatus, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
+  const compatibilityResult = baselineError || goblinError ? "error" : baselineOk && goblinOk ? "pass" : "fail"
+  const metricStatuses = [fileStatus, inputStatus, totalStatus]
+  const efficiencyResult = baselineError || goblinError
+    ? "error"
+    : !answerOk || metricStatuses.includes("fail")
+      ? "fail"
+      : metricStatuses.every((status) => status === "pass")
+        ? "pass"
+        : "mixed"
+  return { row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, compatibilityResult, efficiencyResult, result: efficiencyResult, cacheSize, secretLeakage, quality: q, fileStatus, inputStatus, totalStatus, fileReduction: reduction(baseline.files.length, goblin.files.length), inputReduction: reduction(baseline.inputTokens, goblin.inputTokens), totalReduction: reduction(baseline.totalTokens, goblin.totalTokens) }
 })
 
 const tokenReport = process.env.TOKEN_REPORT === "1"
-const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => {
+const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, compatibilityResult, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => {
   if (tokenReport) return `| ${row.model} | ${baseline.inputTokens} | ${goblin.inputTokens} | ${inputReduction} | ${inputStatus} | ${baseline.totalTokens} | ${goblin.totalTokens} | ${totalReduction} | ${totalStatus} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${fileStatus} | ${cacheSize} | ${result} |`
-  return `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${result} |`
+  return `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${totalReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${compatibilityResult} | ${result} |`
 }).join("\n")
 
-const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
+const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, toolUseOk, answerOk, compatibilityResult, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => `## ${row.model}
 
 ### Summary
 
@@ -426,7 +433,8 @@ const details = results.map(({ row, baseline, goblin, baselineOk, goblinOk, tool
 - Context Goblin completed and validated: ${Boolean(goblinOk)}
 - Tool use OK: ${toolUseOk}
 - Answer OK: ${answerOk}
-- Result: ${result}
+- Compatibility result: ${compatibilityResult}
+- Overall efficiency result: ${result}
 - Baseline direct file reads: ${baseline.files.length}
 - Context Goblin built-in file reads: ${goblin.files.length}
 - File-read reduction: ${fileReduction}
@@ -477,6 +485,7 @@ ${sanitize(baseline.text || "No final text captured.", row)}
 
 - Duration: ${row.goblinDuration}ms
 - Tool calls: ${toolTotal(goblin)}
+- context_goblin_get: ${yn(Boolean(goblin.toolCounts.context_goblin_get))}
 - context_goblin_status: ${yn(Boolean(goblin.toolCounts.context_goblin_status))}
 - context_goblin_refresh: ${yn(Boolean(goblin.toolCounts.context_goblin_refresh))}
 - context_goblin_read: ${yn(Boolean(goblin.toolCounts.context_goblin_read))}
@@ -509,8 +518,8 @@ ${sanitize(goblin.text || "No final text captured.", row)}
 const tableHeader = tokenReport
   ? `| Model | Baseline Input | Goblin Input | Input Saved | Input Status | Baseline Total | Goblin Total | Total Saved | Total Status | Baseline Reads | Goblin Reads | File Saved | File Status | Cache Size | Token Result |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- |`
-  : `| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Quality | Cache Size | Secret Leak | Result |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |`
+  : `| Model | Baseline OK | Tool Use OK | Answer OK | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Secret Leak | Compatibility | Overall |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |`
 
 const report = `# ${process.env.REPORT_TITLE}
 
@@ -529,6 +538,8 @@ ${process.env.TASK_DESCRIPTION}
 - The \`task\`, \`bash\`, and \`edit\` tools are explicitly denied so repository reads remain visible and comparable in the parent OpenCode event stream.
 - Models may use direct \`read\`, \`glob\`, and \`grep\` tools; the Context Goblin arm may additionally use Context Goblin tools.
 - Results are one run per model and arm. Model behavior and provider token accounting can vary between runs.
+- Compatibility passes only when both arms complete, required Goblin tools and cache safety checks pass, and answer quality is sufficient.
+- Overall efficiency passes only when file reads, uncached input tokens, and total event tokens all improve. Any regression fails; `mixed` is reserved for non-regressing but flat or unavailable evidence.
 
 ## Summary
 

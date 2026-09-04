@@ -8,8 +8,25 @@ import { generateProjectContext } from "../cache/generate.js"
 import { getUsageStats } from "../usage/store.js"
 import { projectRoot } from "./root.js"
 
+export async function getFreshProjectContext(root: string, maxCacheKb?: number): Promise<string> {
+  const status = await cacheStatus(root)
+  if (!status.exists || status.stale) {
+    await generateProjectContext({ rootDir: root, maxCacheKb })
+  }
+  return await fs.readFile(`${root}/${CACHE_MARKDOWN}`, "utf8")
+}
+
 export function createContextGoblinTools() {
   return {
+    context_goblin_get: tool({
+      description: "Preferred low-overhead Context Goblin tool. In one call, reuse a fresh safe project cache or regenerate a missing/stale cache, then return it. Use before broad repository discovery and inspect only task-specific files still needed.",
+      args: {
+        maxCacheKb: tool.schema.number().optional(),
+      },
+      async execute(args, context) {
+        return await getFreshProjectContext(projectRoot(context), args.maxCacheKb)
+      },
+    }),
     context_goblin_status: tool({
       description: "Start here before broad repository discovery. Check whether the Context Goblin project cache exists and is fresh; refresh stale or missing caches before reading many files.",
       args: {},
@@ -28,7 +45,7 @@ export function createContextGoblinTools() {
       },
     }),
     context_goblin_read: tool({
-      description: "Read the compact Context Goblin project cache. Use it to avoid broad discovery reads, then inspect only task-specific files whose implementation details are still missing.",
+      description: "Read an existing compact Context Goblin project cache. For normal task work prefer context_goblin_get, which handles freshness in one lower-overhead call.",
       args: {},
       async execute(_args, context) {
         return await fs.readFile(`${projectRoot(context)}/${CACHE_MARKDOWN}`, "utf8")

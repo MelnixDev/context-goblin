@@ -66,14 +66,23 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
     for (const row of rows.slice(1)) {
       const cells = row.split("|").map((cell) => cell.trim()).filter(Boolean)
       const result = cells.at(-1)
-      const allowedResults = reportPath.includes("token-usage") || reportPath.includes("stability") ? ["pass", "mixed", "fail", "error"] : ["pass", "fail", "error"]
+      const allowedResults = ["pass", "mixed", "fail", "error"]
       if (!result || !allowedResults.includes(result)) {
         fail(`${reportPath} has invalid result '${result || ""}' in row: ${row}`)
       }
       if (reportPath.includes("token-usage")) {
+        const inputStatus = cells[4]
         const totalStatus = cells[8]
-        if (result === "pass" && totalStatus !== "pass") {
-          fail(`${reportPath} reports token pass while total-token status is '${totalStatus}': ${row}`)
+        const fileStatus = cells[12]
+        if (result === "pass" && [inputStatus, totalStatus, fileStatus].some((status) => status !== "pass")) {
+          fail(`${reportPath} reports token pass without all efficiency metrics passing: ${row}`)
+        }
+      }
+      if (reportPath.includes("model-general")) {
+        const reductions = cells.slice(6, 9)
+        const compatibility = cells[12]
+        if (result === "pass" && (compatibility !== "pass" || reductions.some((value) => !/^\d+%$/.test(value) || value === "0%"))) {
+          fail(`${reportPath} reports overall pass without positive compatibility and efficiency results: ${row}`)
         }
       }
       if (cells[1] === "no" && result === "fail") {

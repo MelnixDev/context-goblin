@@ -69,7 +69,7 @@ cat > "$fixture/opencode.json" <<'JSON'
 }
 JSON
 
-prompt='Use Context Goblin and no broad repository discovery. Call context_goblin_status. If the cache is missing or stale, call context_goblin_refresh. Then call context_goblin_read and context_goblin_stats. Do not call task, bash, edit, read, glob, or grep. Do not read .env. Finish with exactly LIVE_SMOKE_OK after briefly reporting cache freshness and tracked files.'
+prompt='Use Context Goblin and no broad repository discovery. Call context_goblin_get exactly once. Do not call separate Context Goblin status, refresh, read, or stats tools. Do not call task, bash, edit, read, glob, or grep. Do not read .env. Finish with exactly LIVE_SMOKE_OK after briefly reporting the project stack.'
 
 set +e
 XDG_CONFIG_HOME="$xdg_config" \
@@ -92,8 +92,8 @@ const records = fs.readFileSync(eventsPath, "utf8").split("\n").filter(Boolean).
 const tools = records.flatMap((record) => record.part?.type === "tool" && record.part.tool ? [record.part.tool] : [])
 const finalText = records.flatMap((record) => record.part?.type === "text" && record.part.text ? [record.part.text] : []).at(-1) ?? ""
 const errors = records.filter((record) => record.type === "error")
-const requiredTools = ["context_goblin_status", "context_goblin_refresh", "context_goblin_read", "context_goblin_stats"]
-const forbiddenTools = ["task", "bash", "edit", "read", "glob", "grep"]
+const requiredTools = ["context_goblin_get"]
+const forbiddenTools = ["context_goblin_status", "context_goblin_refresh", "context_goblin_read", "context_goblin_stats", "task", "bash", "edit", "read", "glob", "grep"]
 const cachePath = path.join(root, ".opencode/cache/context-goblin/project-context.md")
 const statePath = path.join(root, ".opencode/cache/context-goblin/project-context.state.json")
 const failures = []
@@ -101,6 +101,7 @@ const failures = []
 for (const tool of requiredTools) {
   if (!tools.includes(tool)) failures.push(`required tool was not called: ${tool}`)
 }
+if (tools.filter((tool) => tool === "context_goblin_get").length !== 1) failures.push("context_goblin_get must be called exactly once")
 for (const tool of forbiddenTools) {
   if (tools.includes(tool)) failures.push(`forbidden broad-discovery tool was called: ${tool}`)
 }

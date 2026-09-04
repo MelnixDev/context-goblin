@@ -2,7 +2,7 @@
 
 Generated: 2026-09-04
 OpenCode version: 1.18.20
-Context Goblin version: 0.1.19
+Context Goblin version: 0.1.20
 Protocol: repeated agentic A/B with cold-refresh and warm-cache controls
 
 ## Status
@@ -17,10 +17,10 @@ measurements. No stability claim is made from them.
 
 - Live smoke passed on `openai/gpt-5.5` and `openai/gpt-5.6-sol` with the required
   `status → refresh → read → stats` tool sequence.
-- General one-shot A/B passed on both models with answer quality `6/6` and no secret
-  leakage. File-read reductions were 56% (`gpt-5.5`) and 18% (`gpt-5.6-sol`).
-- Token-focused one-shot A/B reduced direct file reads by 47% and 24%, respectively,
-  while token accounting remained mixed.
+- Single-call one-shot A/B passed on both models with answer quality `6/6` and no
+  secret leakage. File-read reductions were 44% (`gpt-5.5`) and 35% (`gpt-5.6-sol`).
+- Input-token reductions were 28% and 45%; total-event-token reductions were 47%
+  and 35%, respectively.
 
 ## Reproduction
 

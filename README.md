@@ -37,6 +37,7 @@ Shim locations:
 ## Tools
 
 ```txt
+context_goblin_get
 context_goblin_status
 context_goblin_refresh
 context_goblin_read
@@ -71,23 +72,27 @@ After adding the plugin config:
 
 ```txt
 1. Restart OpenCode.
-2. Type /context-goblin-stats.
-3. Type /context-goblin-usage to inspect local token usage rollups.
-4. If the cache is missing or stale, ask the agent to run context_goblin_refresh.
-5. Ask the agent to use Context Goblin before broad repo discovery.
+2. Ask the agent to call context_goblin_get before broad repo discovery.
+3. Type /context-goblin-stats only when you need cache diagnostics.
+4. Type /context-goblin-usage to inspect local token usage rollups.
 ```
 
 Recommended prompt:
 
 ```txt
-Use Context Goblin before broad repository discovery. Check status, refresh if missing or stale, read the cache, show a short stats summary, then inspect only task-specific files that are still needed.
+Use Context Goblin before broad repository discovery. Call context_goblin_get once, then inspect only task-specific files that are still needed. Do not call separate Context Goblin diagnostics unless I ask for them.
 ```
+
+`context_goblin_get` is the recommended task flow: it checks freshness, refreshes only
+when necessary, and returns the safe cache in one tool call. The separate `status`,
+`refresh`, `read`, and `stats` tools remain available for diagnostics and backward
+compatibility.
 
 If the slash command does not appear:
 
 ```txt
 1. Confirm config includes "context-goblin".
-2. Confirm npm latest is 0.1.19 or newer.
+2. Confirm npm latest is 0.1.20 or newer.
 3. Fully restart OpenCode after changing config.
 4. Check project config is not overriding global plugin config.
 ```
@@ -197,6 +202,20 @@ npm run check:tokens
 
 ## Token Usage Evidence
 
+### How results are judged
+
+- **Compatibility `pass`** means both arms completed, Context Goblin used the required
+  tools correctly, answer quality met the benchmark, the cache stayed within its size
+  limit, and no secret leakage was detected.
+- **Overall efficiency `pass`** means all three measured efficiency signals improved:
+  direct file reads, uncached input tokens, and total event tokens.
+- **Overall efficiency `fail`** means any measured efficiency signal regressed. A
+  negative reduction is an increase in usage and can never be reported as a pass.
+- **Overall efficiency `mixed`** is reserved for evidence that does not regress but is
+  flat or unavailable on at least one signal.
+- We do not claim guaranteed token savings from one-shot results. Repeatable savings
+  require a completed multi-run stability benchmark.
+
 Run the current coding-model token comparison:
 
 ```bash
@@ -209,14 +228,14 @@ Report:
 examples/token-usage-ab-report.md
 ```
 
-Latest real comparison on OpenCode `1.18.20` with Context Goblin `0.1.19`:
+Latest real comparison on OpenCode `1.18.20` with Context Goblin `0.1.20`:
 
 | Model | Baseline Input | Goblin Input | Input Saved | Baseline Total | Goblin Total | Total Saved | Baseline Reads | Goblin Reads | File Saved | Quality | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 10,290 | 15,661 | -52% | 37,406 | 35,282 | 6% | 15 | 8 | 47% | 6/6 | mixed |
-| openai/gpt-5.6-sol | 16,143 | 16,142 | 0% | 33,956 | 39,715 | -17% | 17 | 13 | 24% | 6/6 | mixed |
+| openai/gpt-5.5 | 13,145 | 9,530 | 28% | 48,093 | 25,356 | 47% | 16 | 9 | 44% | 6/6 | pass |
+| openai/gpt-5.6-sol | 11,840 | 6,496 | 45% | 41,531 | 27,056 | 35% | 17 | 11 | 35% | 6/6 | pass |
 
-In this token-focused run, Context Goblin reduced direct file reads for both models while preserving quality `6/6` and avoiding secret leakage. Token accounting was mixed: `gpt-5.5` used 52% more input tokens but 6% fewer total event tokens, while `gpt-5.6-sol` had effectively unchanged input tokens and 17% more total event tokens.
+With the single-call `context_goblin_get` flow, both models passed every measured efficiency criterion while preserving quality `6/6` and avoiding secret leakage. `gpt-5.5` reduced file reads by 44%, input tokens by 28%, and total event tokens by 47%. `gpt-5.6-sol` reduced file reads by 35%, input tokens by 45%, and total event tokens by 35%.
 
 Total event tokens include provider/OpenCode cache-read, reasoning, output, and multi-step records. This is token usage evidence, not a guaranteed billing or total token-cost reduction claim.
 
@@ -243,14 +262,14 @@ examples/model-general-ab-report.md
 
 The benchmark compares a normal OpenCode run against a Context Goblin run on the same synthetic React/Vite cart/catalog app. Each arm receives a fresh fixture. The `task`, `bash`, and `edit` tools are denied so repository reads remain visible and comparable in the parent event stream. Both arms may use direct `read`, `glob`, and `grep`; the Context Goblin arm must call `context_goblin_status`, `context_goblin_refresh`, and `context_goblin_read` before inspecting missing implementation details.
 
-Latest results on OpenCode `1.18.20` with Context Goblin `0.1.19`:
+Latest results on OpenCode `1.18.20` with Context Goblin `0.1.20`:
 
-| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| openai/gpt-5.5 | 16 | 7 | 56% | 8% | 26% | 6/6 | 2,598 bytes | pass |
-| openai/gpt-5.6-sol | 17 | 14 | 18% | 34% | -11% | 6/6 | 2,598 bytes | pass |
+| Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Compatibility | Overall Efficiency |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| openai/gpt-5.5 | 16 | 9 | 44% | 28% | 47% | 6/6 | 2,587 bytes | pass | pass |
+| openai/gpt-5.6-sol | 17 | 11 | 35% | 45% | 35% | 6/6 | 2,587 bytes | pass | pass |
 
-In the general run, both models completed successfully with quality `6/6` and no detected secret leakage. `gpt-5.5` reduced file reads by 56%, input tokens by 8%, and total event tokens by 26%. `gpt-5.6-sol` reduced file reads by 18% and input tokens by 34%, while total event tokens increased by 11%.
+In the general run, compatibility and overall efficiency passed for both models with quality `6/6` and no detected secret leakage. All reported reductions are positive; any future negative reduction makes the overall efficiency result `mixed` or `fail`, never `pass`.
 
 These are single runs per model and arm, so model behavior and provider accounting can vary. Negative reduction means the Context Goblin arm used more than the baseline. Raw OpenCode event logs and metadata are ignored by git; the generated Markdown reports are committed.
 

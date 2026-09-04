@@ -13,7 +13,7 @@ const runs = Number(process.env.STABILITY_RUNS || 5)
 const coldRuns = Number(process.env.STABILITY_COLD_RUNS || 1)
 const armTimeoutMs = Number(process.env.STABILITY_ARM_TIMEOUT_MS || 240000)
 const modelVariant = process.env.OPENCODE_VARIANT || "minimal"
-const protocolVersion = "stable-v2-concise"
+const protocolVersion = "stable-v3-single-call"
 const reportPath = path.join(repoRoot, "examples/model-stability-ab-report.md")
 
 if (!Number.isInteger(runs) || runs < 3) throw new Error("STABILITY_RUNS must be an integer >= 3")
@@ -22,8 +22,8 @@ if (!fs.existsSync(opencodeBin)) throw new Error(`OpenCode CLI not found: ${open
 
 const answerFormat = 'Reply in at most 250 words using exactly these headings: Stack, Files, Plan, Risks, Tests, Safety. Mention commands, cartStore.ts, CartDrawer.tsx, a catalog product file, cart tests, and that .env was excluded.'
 const baselinePrompt = `No Context Goblin is available. Inspect only what is needed to plan a "Save for later" cart feature. Use built-in read, glob, and grep only; no task/subagents, bash, edits, or .env reads. ${answerFormat}`
-const coldPrompt = `Cold-cache Context Goblin run. Call context_goblin_status, context_goblin_refresh, context_goblin_read, and context_goblin_stats in that order. Use the cache instead of broad discovery and read at most five task-specific files; no task/subagents, bash, edits, or .env reads. Plan a "Save for later" cart feature. ${answerFormat}`
-const warmPrompt = `Warm-cache Context Goblin run. Call context_goblin_status, context_goblin_read, and context_goblin_stats in that order. Do not refresh a fresh cache. Use the cache instead of broad discovery and read at most five task-specific files; no task/subagents, bash, edits, or .env reads. Plan a "Save for later" cart feature. ${answerFormat}`
+const coldPrompt = `Cold-cache Context Goblin run. Call context_goblin_get exactly once and do not call the separate status, refresh, read, or stats tools. Use the returned cache instead of broad discovery and read at most five task-specific files; no task/subagents, bash, edits, or .env reads. Plan a "Save for later" cart feature. ${answerFormat}`
+const warmPrompt = `Warm-cache Context Goblin run. Call context_goblin_get exactly once and do not call the separate status, refresh, read, or stats tools. Use the returned cache instead of broad discovery and read at most five task-specific files; no task/subagents, bash, edits, or .env reads. Plan a "Save for later" cart feature. ${answerFormat}`
 
 function write(root, relative, content) {
   const file = path.join(root, relative)
@@ -110,8 +110,8 @@ function runArm({ model, round, mode, root, xdgConfig, prompt }) {
       const secretLeak = cache.includes("super-secret") || metrics.text.includes("super-secret")
       const expectedTools = mode === "baseline"
         ? !Object.keys(metrics.toolCounts).some((tool) => tool.startsWith("context_goblin_"))
-        : Boolean(metrics.toolCounts.context_goblin_status && metrics.toolCounts.context_goblin_read && metrics.toolCounts.context_goblin_stats)
-      const refreshOk = mode === "cold" ? Boolean(metrics.toolCounts.context_goblin_refresh) : mode === "warm" ? !metrics.toolCounts.context_goblin_refresh : true
+        : metrics.toolCounts.context_goblin_get === 1
+      const refreshOk = mode === "baseline" || !metrics.toolCounts.context_goblin_refresh
       const cacheOk = mode === "baseline" || (fs.existsSync(cachePath) && fs.existsSync(statePath) && cache.length <= 25 * 1024 && !secretLeak)
       const readBudgetOk = mode === "baseline" || metrics.files.length <= 5
       const ok = code === 0 && metrics.errors.length === 0 && expectedTools && refreshOk && cacheOk && readBudgetOk && quality === 6
@@ -284,7 +284,7 @@ for (const model of models) {
     }
     const expectedGoblinRuns = mode === "cold" ? coldRuns : runs
     const allValid = baseline.ok === runs && goblin.ok === expectedGoblinRuns && goblin.quality === 6 && goblin.leaks === 0
-    const stable = allValid && medians.reads >= 25 && medians.input > 0
+    const stable = allValid && medians.reads >= 25 && medians.input > 0 && medians.total > 0
     summaries.push({ model, mode, baseline, goblin, pairs, medians, allValid, result: stable ? "pass" : allValid && medians.reads > 0 ? "mixed" : "fail" })
   }
 }
@@ -293,7 +293,7 @@ const summaryRows = summaries.map((item) => `| ${item.model} | ${item.mode} | ${
 
 const details = summaries.map((item) => `## ${item.model} — ${item.mode}\n\n- Valid baseline runs: ${item.baseline.ok}/${runs}\n- Valid Goblin runs: ${item.goblin.ok}/${item.mode === "cold" ? coldRuns : runs}\n- Baseline reads median (range): ${item.baseline.reads} (${item.baseline.readsRange})\n- Goblin reads median (range): ${item.goblin.reads} (${item.goblin.readsRange})\n- Paired file-read reduction median (range): ${item.medians.reads}% (${percentRange(item.pairs.map((pair) => pair.reads))})\n- Paired uncached-input reduction median (range): ${item.medians.input}% (${percentRange(item.pairs.map((pair) => pair.input))})\n- Paired total-event-token reduction median (range): ${item.medians.total}% (${percentRange(item.pairs.map((pair) => pair.total))})\n- Baseline input median (range): ${item.baseline.input} (${item.baseline.inputRange})\n- Goblin input median (range): ${item.goblin.input} (${item.goblin.inputRange})\n- Baseline total median (range): ${item.baseline.total} (${item.baseline.totalRange})\n- Goblin total median (range): ${item.goblin.total} (${item.goblin.totalRange})\n- Goblin cache-read token median: ${item.goblin.cacheRead}\n- Goblin duration median: ${item.goblin.duration}ms\n- Minimum quality: ${item.goblin.quality}/6\n- Maximum cache size: ${item.goblin.maxCache} bytes\n- Secret leaks: ${item.goblin.leaks}\n- Stability result: ${item.result}\n\n| Round | File-read reduction | Input reduction | Total reduction |\n| ---: | ---: | ---: | ---: |\n${item.pairs.map((pair) => `| ${pair.round} | ${pair.reads}% | ${pair.input}% | ${pair.total}% |`).join("\n")}\n`).join("\n")
 
-const report = `# Context Goblin Repeated Stability A/B Report\n\nGenerated: ${new Date().toISOString()}\nOpenCode version: ${opencodeVersion}\nContext Goblin version: ${packageJson.version}\nProtocol: ${protocolVersion}\nModel variant: ${modelVariant}\nBaseline/warm runs per model: ${runs}\nCold refresh controls per model: ${coldRuns}\n\n## Protocol\n\n- Each round uses fresh copies of the same React/Vite fixture. Baseline and warm-cache Goblin run in every round; cold-cache Goblin runs ${coldRuns} time(s) per model as a refresh control.\n- Execution order alternates each round to reduce ordering and provider-cache bias.\n- Cold runs must refresh the Goblin cache; warm runs receive a pre-generated fresh cache and must not refresh it.\n- Goblin runs may inspect at most five task-specific implementation files after reading the cache.\n- Answers use a fixed six-section format capped at 250 words.\n- Results use paired per-round reductions, medians, and observed ranges rather than a single run.\n- Uncached input excludes provider-reported cache-read tokens. Total event tokens include input, output, reasoning, and provider cache accounting.\n- Stable pass requires every required run valid, quality 6/6, no secret leaks, median file-read reduction >=25%, and positive median uncached-input reduction.\n\n## Summary\n\n| Model | Cache | Baseline valid | Goblin valid | Baseline reads median | Goblin reads median | File saved median | File saved range | Input saved median | Input saved range | Total saved median | Min quality | Leaks | Result |\n| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n${summaryRows}\n\n${details}`
+const report = `# Context Goblin Repeated Stability A/B Report\n\nGenerated: ${new Date().toISOString()}\nOpenCode version: ${opencodeVersion}\nContext Goblin version: ${packageJson.version}\nProtocol: ${protocolVersion}\nModel variant: ${modelVariant}\nBaseline/warm runs per model: ${runs}\nCold refresh controls per model: ${coldRuns}\n\n## Protocol\n\n- Each round uses fresh copies of the same React/Vite fixture. Baseline and warm-cache Goblin run in every round; cold-cache Goblin runs ${coldRuns} time(s) per model as a refresh control.\n- Execution order alternates each round to reduce ordering and provider-cache bias.\n- The single context_goblin_get call refreshes a missing/stale cold cache and reuses a pre-generated fresh warm cache.\n- Goblin runs may inspect at most five task-specific implementation files after reading the cache.\n- Answers use a fixed six-section format capped at 250 words.\n- Results use paired per-round reductions, medians, and observed ranges rather than a single run.\n- Uncached input excludes provider-reported cache-read tokens. Total event tokens include input, output, reasoning, and provider cache accounting.\n- Stable pass requires every required run valid, quality 6/6, no secret leaks, median file-read reduction >=25%, positive median uncached-input reduction, and positive median total-event-token reduction.\n\n## Summary\n\n| Model | Cache | Baseline valid | Goblin valid | Baseline reads median | Goblin reads median | File saved median | File saved range | Input saved median | Input saved range | Total saved median | Min quality | Leaks | Result |\n| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n${summaryRows}\n\n${details}`
 
 fs.writeFileSync(reportPath, report.trimEnd() + "\n")
 console.log(`Wrote ${path.relative(repoRoot, reportPath)}`)
