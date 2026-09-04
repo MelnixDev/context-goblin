@@ -92,7 +92,7 @@ If the slash command does not appear:
 
 ```txt
 1. Confirm config includes "context-goblin".
-2. Confirm npm latest is 0.1.20 or newer.
+2. Confirm npm latest is 0.1.21 or newer.
 3. Fully restart OpenCode after changing config.
 4. Check project config is not overriding global plugin config.
 ```
@@ -240,7 +240,7 @@ accounting; the general report emphasizes completion and quality. Each arm denie
 `task`, `bash`, and `edit`, and the Goblin arm uses the single low-overhead
 `context_goblin_get` call before focused reads.
 
-Latest comparison on OpenCode `1.18.20` with Context Goblin `0.1.20`:
+Latest comparison on OpenCode `1.18.20` with Context Goblin `0.1.21`:
 
 | Model | Baseline Reads | Goblin Reads | File Reduction | Input Token Reduction | Total Token Reduction | Quality | Cache Size | Compatibility | Overall Efficiency |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |

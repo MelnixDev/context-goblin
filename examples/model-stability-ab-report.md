@@ -2,7 +2,7 @@
 
 Generated: 2026-09-04
 OpenCode version: 1.18.20
-Context Goblin version: 0.1.20
+Context Goblin version: 0.1.21
 Protocol: repeated agentic A/B with cold-refresh and warm-cache controls
 
 ## Status
