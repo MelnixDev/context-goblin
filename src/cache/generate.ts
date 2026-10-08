@@ -6,7 +6,6 @@ import { detectStack } from "../project/detectStack.js"
 import { hashProjectState } from "../project/hashProjectState.js"
 import { buildCodeMap } from "../context/codeMap.js"
 import { listDirectoryMap } from "../context/directoryMap.js"
-import { readTextIfAllowed } from "../context/fileAccess.js"
 import { contextSections, renderProjectContextMarkdown } from "../context/markdown.js"
 import { redactSecrets } from "../security.js"
 import { truncateMarkdown } from "../truncateMarkdown.js"
@@ -20,10 +19,10 @@ export async function generateProjectContext(options: ContextGoblinOptions): Pro
   const projectHash = await hashProjectState(rootDir)
   const directoryMap = await listDirectoryMap(rootDir)
   const codeMap = await buildCodeMap(rootDir, stack.entryPoints)
-  const agents = await readTextIfAllowed(rootDir, "AGENTS.md")
+  const agentsPresent = await fs.lstat(path.join(rootDir, "AGENTS.md")).then((stat) => stat.isFile()).catch(() => false)
   const generatedAt = new Date().toISOString()
 
-  const markdown = truncateMarkdown(redactSecrets(renderProjectContextMarkdown({ generatedAt, stack, directoryMap, codeMap, agents })), maxCacheKb)
+  const markdown = truncateMarkdown(redactSecrets(renderProjectContextMarkdown({ generatedAt, stack, directoryMap, codeMap, agentsPresent })), maxCacheKb)
   const stats = buildCacheStats({ markdown, directoryMap, codeMap, sections: contextSections() })
 
   await fs.mkdir(path.join(rootDir, path.dirname(CACHE_MARKDOWN)), { recursive: true })

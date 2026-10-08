@@ -62,13 +62,11 @@ function summarizeCodeFile(relativePath: string, text: string): string[] {
     ...extractMatches(text, /^export\s*\{([^}]+)\}/gm, 4).flatMap((group) => group.split(",").map((item) => item.trim().split(" as ")[0]?.trim() ?? "")),
   ]).slice(0, 12)
   const components = extractMatches(text, /(?:export\s+)?function\s+([A-Z][A-Za-z0-9_]*)\s*\(/g, 8)
-  const tests = extractMatches(text, /\b(?:describe|it|test)\s*\(\s*["'`](.+?)["'`]/g, 8)
 
   const lines = [`- ${relativePath}`]
   if (imports.length) lines.push(`  - imports: ${imports.join(", ")}`)
   if (exports.length) lines.push(`  - exports: ${exports.join(", ")}`)
   if (components.length) lines.push(`  - components: ${components.join(", ")}`)
-  if (tests.length) lines.push(`  - tests: ${tests.join(", ")}`)
   return lines
 }
 

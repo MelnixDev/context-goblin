@@ -40,6 +40,8 @@ else
   task_description='Plan where and how to add a "Save for later" feature to a realistic React/Vite cart and catalog app. The model must not modify files or read .env.'
 fi
 
+metadata_path="${AB_METADATA_PATH:-$metadata_path}"
+package_version="$(node -p "require('$repo_root/package.json').version")"
 mkdir -p "$repo_root/examples"
 
 if [ "${REUSE_EXISTING:-0}" != "1" ]; then
@@ -182,7 +184,7 @@ run_opencode() {
   local started ended exit_code
   started="$(date +%s)"
   set +e
-  XDG_CONFIG_HOME="$xdg_config" "$opencode_bin" run --model "$model" --auto --format json --dir "$root" "$prompt" > "$output" 2> "$stderr_file"
+  XDG_CONFIG_HOME="$xdg_config" node "$repo_root/scripts/run-opencode.mjs" "$opencode_bin" run --model "$model" --auto --format json --dir "$root" "$prompt" > "$output" 2> "$stderr_file"
   exit_code="$?"
   set -e
   ended="$(date +%s)"
@@ -219,13 +221,23 @@ EOF
 
     echo "Running general baseline: $model"
     baseline_result="$(run_opencode "$model" "$baseline_dir" "$baseline_prompt" "$baseline_raw" "$baseline_stderr" "$xdg_config")"
-    echo "Running general Context Goblin: $model"
-    goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr" "$xdg_config")"
+    goblin_result="125:0"
+    if [ "${baseline_result%%:*}" = "0" ]; then
+      echo "Running general Context Goblin: $model"
+      goblin_result="$(run_opencode "$model" "$goblin_dir" "$goblin_prompt" "$goblin_raw" "$goblin_stderr" "$xdg_config")"
+    else
+      : > "$goblin_raw"
+      : > "$goblin_stderr"
+    fi
 
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$model" "$baseline_dir" "$goblin_dir" "$baseline_raw" "$goblin_raw" \
       "$baseline_stderr" "$goblin_stderr" "${baseline_result%%:*}" "${baseline_result##*:}" \
-      "${goblin_result%%:*}" "${goblin_result##*:}" "$name" >> "$metadata_path"
+      "${goblin_result%%:*}" "${goblin_result##*:}" "$name" "$package_version" >> "$metadata_path"
+    if [ "${baseline_result%%:*}" != "0" ] || [ "${goblin_result%%:*}" != "0" ]; then
+      echo "OpenCode run failed; stopping remaining model calls and preserving the completed report."
+      break
+    fi
   done
 fi
 
@@ -234,6 +246,7 @@ REPO_ROOT="$repo_root" \
 METADATA_PATH="$metadata_path" \
 REPORT_PATH="$report_path" \
 MODEL_GROUP_USED="$model_group" \
+EXPECTED_MODELS="$models" \
 REPORT_TITLE="$report_title" \
 TASK_DESCRIPTION="$task_description" \
 TOKEN_REPORT="${TOKEN_REPORT:-0}" \
@@ -246,9 +259,14 @@ const path = require("node:path")
 const repoRoot = process.env.REPO_ROOT
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"))
 const rows = fs.readFileSync(process.env.METADATA_PATH, "utf8").trim().split("\n").filter(Boolean).map((line) => {
-  const [model, baselineRoot, goblinRoot, baselineRaw, goblinRaw, baselineStderr, goblinStderr, baselineExit, baselineDuration, goblinExit, goblinDuration, safeName] = line.split("\t")
-  return { model, baselineRoot: real(baselineRoot), goblinRoot: real(goblinRoot), baselineRaw, goblinRaw, baselineStderr, goblinStderr, baselineExit: Number(baselineExit), baselineDuration: Number(baselineDuration), goblinExit: Number(goblinExit), goblinDuration: Number(goblinDuration), safeName }
+  const [model, baselineRoot, goblinRoot, baselineRaw, goblinRaw, baselineStderr, goblinStderr, baselineExit, baselineDuration, goblinExit, goblinDuration, safeName, packageVersion] = line.split("\t")
+  return { model, baselineRoot: real(baselineRoot), goblinRoot: real(goblinRoot), baselineRaw, goblinRaw, baselineStderr, goblinStderr, baselineExit: Number(baselineExit), baselineDuration: Number(baselineDuration), goblinExit: Number(goblinExit), goblinDuration: Number(goblinDuration), safeName, packageVersion }
 })
+const expectedModels = process.env.EXPECTED_MODELS.trim().split(/\s+/)
+if (!rows.length || rows.some((row) => row.packageVersion !== packageJson.version || row.baselineExit !== 0 || row.goblinExit !== 0) || expectedModels.some((model) => rows.filter((row) => row.model === model).length !== 1)) {
+  console.error("A/B execution is incomplete or metadata belongs to another package version; the completed report was preserved.")
+  process.exit(1)
+}
 
 function real(value) {
   try { return fs.realpathSync(value) } catch { return value }
@@ -270,7 +288,7 @@ function parseEvents(filePath, root) {
       if (!part) continue
       if (part.type === "tool" && part.tool) {
         toolCounts[part.tool] = (toolCounts[part.tool] || 0) + 1
-        collectFiles(part.state?.input, root, files)
+        if (part.tool === "read") collectFiles(part.state?.input, root, files)
       }
       if (part.type === "text" && part.text) textParts.push(part.text)
       if (part.tokens) {
@@ -284,7 +302,7 @@ function parseEvents(filePath, root) {
       cost += part.cost || 0
     } catch {}
   }
-  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", errors, inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
+  return { toolCounts, files: [...files].sort(), text: textParts.at(-1) || "", errors, secretLeakage: raw.includes("super-secret"), inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalTokens, cost }
 }
 
 function errorSummary(error) {
@@ -395,14 +413,17 @@ const results = rows.map((row) => {
   const cachePath = path.join(row.goblinRoot, ".opencode/cache/context-goblin/project-context.md")
   const statePath = path.join(row.goblinRoot, ".opencode/cache/context-goblin/project-context.state.json")
   const cache = fs.existsSync(cachePath) ? fs.readFileSync(cachePath, "utf8") : ""
-  const secretLeakage = cache.includes("super-secret") || /(?:API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\[]\S+)/.test(cache)
+  const secretLeakage = baseline.secretLeakage || goblin.secretLeakage || cache.includes("super-secret") || /(?:API_KEY|PASSWORD|TOKEN|SECRET|PRIVATE_KEY)=([^\[]\S+)/.test(cache)
   const cacheSize = Buffer.byteLength(cache)
   const q = quality(goblin.text)
+  const baselineQuality = quality(baseline.text)
   const baselineError = row.baselineExit !== 0 || baseline.errors.length > 0
   const goblinError = row.goblinExit !== 0 || goblin.errors.length > 0
-  const toolUseOk = Boolean(goblin.toolCounts.context_goblin_get === 1 && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
-  const answerOk = q.score >= 4 && q.required.length === requiredQualityChecks.length && q.disqualified.length === 0
-  const baselineOk = !baselineError
+  const forbiddenTools = ["task", "bash", "edit", "context_goblin_status", "context_goblin_refresh", "context_goblin_read", "context_goblin_stats"]
+  const forbiddenUse = forbiddenTools.some((tool) => baseline.toolCounts[tool] || goblin.toolCounts[tool]) || [...baseline.files, ...goblin.files].some((file) => /(?:^|\/)\.env(?:\.|$)/.test(file))
+  const toolUseOk = Boolean(goblin.toolCounts.context_goblin_get === 1 && !forbiddenUse && fs.existsSync(cachePath) && fs.existsSync(statePath) && !secretLeakage && cacheSize <= 25 * 1024 && goblin.files.length <= baseline.files.length)
+  const answerOk = q.score === qualityChecks.length && q.required.length === requiredQualityChecks.length && q.disqualified.length === 0
+  const baselineOk = !baselineError && baselineQuality.score === qualityChecks.length && baselineQuality.required.length === requiredQualityChecks.length && baselineQuality.disqualified.length === 0
   const goblinOk = !goblinError && toolUseOk && answerOk
   const fileStatus = metricStatus(baseline.files.length, goblin.files.length)
   const inputStatus = metricStatus(baseline.inputTokens, goblin.inputTokens)
@@ -411,7 +432,7 @@ const results = rows.map((row) => {
   const metricStatuses = [fileStatus, inputStatus, totalStatus]
   const efficiencyResult = baselineError || goblinError
     ? "error"
-    : !answerOk || metricStatuses.includes("fail")
+    : compatibilityResult !== "pass" || metricStatuses.includes("fail")
       ? "fail"
       : metricStatuses.every((status) => status === "pass")
         ? "pass"
@@ -420,6 +441,11 @@ const results = rows.map((row) => {
 })
 
 const tokenReport = process.env.TOKEN_REPORT === "1"
+if (results.some((result) => result.baseline.errors.length || result.goblin.errors.length)) {
+  for (const result of results) console.error(`${result.row.model}: ${[...result.baseline.errors, ...result.goblin.errors].join("; ")}`)
+  console.error("Provider errors are excluded from performance evidence; the completed report was preserved.")
+  process.exit(1)
+}
 const summaryRows = results.map(({ row, baseline, goblin, baselineOk, toolUseOk, answerOk, compatibilityResult, result, cacheSize, secretLeakage, quality, fileStatus, inputStatus, totalStatus, fileReduction, inputReduction, totalReduction }) => {
   if (tokenReport) return `| ${row.model} | ${baseline.inputTokens} | ${goblin.inputTokens} | ${inputReduction} | ${inputStatus} | ${baseline.totalTokens} | ${goblin.totalTokens} | ${totalReduction} | ${totalStatus} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${fileStatus} | ${cacheSize} | ${result} |`
   return `| ${row.model} | ${yn(baselineOk)} | ${yn(toolUseOk)} | ${yn(answerOk)} | ${baseline.files.length} | ${goblin.files.length} | ${fileReduction} | ${inputReduction} | ${totalReduction} | ${quality.score}/6 | ${cacheSize} | ${secretLeakage ? "fail" : "pass"} | ${compatibilityResult} | ${result} |`
@@ -537,9 +563,11 @@ ${process.env.TASK_DESCRIPTION}
 - Each arm receives a fresh copy of the same synthetic fixture.
 - The \`task\`, \`bash\`, and \`edit\` tools are explicitly denied so repository reads remain visible and comparable in the parent OpenCode event stream.
 - Models may use direct \`read\`, \`glob\`, and \`grep\` tools; the Context Goblin arm may additionally use Context Goblin tools.
+- File-read counts are distinct files read by the built-in \`read\` tool; \`glob\` and \`grep\` inputs do not count as file reads.
 - Results are one run per model and arm. Model behavior and provider token accounting can vary between runs.
-- Compatibility passes only when both arms complete, required Goblin tools and cache safety checks pass, and answer quality is sufficient.
-- Overall efficiency passes only when file reads, uncached input tokens, and total event tokens all improve. Any regression fails; `mixed` is reserved for non-regressing but flat or unavailable evidence.
+- Compatibility passes only when both arms complete, the single-call tool flow and safety checks pass, and both answers cover all six checklist items and the required feature scope.
+- The 6/6 checklist measures answer coverage, not independent proof of semantic correctness. Read the captured answers before making a quality claim.
+- Overall efficiency passes only when file reads, uncached input tokens, and total event tokens all improve. Any regression fails; \`mixed\` is reserved for non-regressing but flat or unavailable evidence.
 
 ## Summary
 
@@ -549,8 +577,8 @@ ${summaryRows}
 ${details}
 `
 
-fs.writeFileSync(process.env.REPORT_PATH, report)
+fs.writeFileSync(process.env.REPORT_PATH, report.trimEnd() + "\n")
 console.log(report)
 
-if (!results.some((result) => result.result === "pass" || result.result === "mixed")) process.exit(1)
+if (results.some((result) => result.compatibilityResult !== "pass" || result.result !== "pass")) process.exit(1)
 NODE

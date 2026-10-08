@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "0.1.1"
+export const CACHE_VERSION = "0.1.2"
 
 export const CACHE_DIR = ".opencode/cache/context-goblin"
 export const CACHE_MARKDOWN = `${CACHE_DIR}/project-context.md`

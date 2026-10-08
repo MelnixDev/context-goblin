@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import fs from "node:fs/promises"
+import path from "node:path"
 
 import { describe, expect, it } from "vitest"
 
@@ -58,5 +60,48 @@ describe("hashProjectState", () => {
         await writeFile(root, "node_modules/pkg/index.js", "changed")
         const after = await hashProjectState(root)
         expect(after.hash).toBe(afterSource.hash)
+    })
+
+    it("tracks source additions, edits, and deletions without Git", async () => {
+        const root = await tempProject()
+        await writeFile(root, "package.json", JSON.stringify({ name: "x" }))
+        const initial = (await hashProjectState(root)).hash
+        await writeFile(root, "src/index.ts", "export const value = 1")
+        const added = (await hashProjectState(root)).hash
+        await writeFile(root, "src/index.ts", "export const value = 2")
+        const edited = (await hashProjectState(root)).hash
+        await fs.unlink(path.join(root, "src/index.ts"))
+        const deleted = (await hashProjectState(root)).hash
+        expect(added).not.toBe(initial)
+        expect(edited).not.toBe(added)
+        expect(deleted).toBe(initial)
+    })
+
+    it("tracks allowed source-link targets without Git", async () => {
+        const root = await tempProject()
+        await writeFile(root, "implementation.txt", "export const value = 1")
+        await fs.symlink(path.join(root, "implementation.txt"), path.join(root, "index.ts"))
+        const before = (await hashProjectState(root)).hash
+        await writeFile(root, "implementation.txt", "export const value = 2")
+        expect((await hashProjectState(root)).hash).not.toBe(before)
+    })
+
+    it("tracks ignored source files that can appear in the code map", async () => {
+        const root = await tempProject()
+        await execFileAsync("git", ["init"], { cwd: root })
+        await execFileAsync("git", ["config", "user.email", "test@example.com"], { cwd: root })
+        await execFileAsync("git", ["config", "user.name", "Test"], { cwd: root })
+        await writeFile(root, ".gitignore", "local/\n")
+        await execFileAsync("git", ["add", ".gitignore"], { cwd: root })
+        await execFileAsync("git", ["commit", "-m", "initial"], { cwd: root })
+        const initial = (await hashProjectState(root)).hash
+        await writeFile(root, "local/index.ts", "export const value = 1")
+        const added = (await hashProjectState(root)).hash
+        await writeFile(root, "local/index.ts", "export const value = 2")
+        const edited = (await hashProjectState(root)).hash
+        await fs.unlink(path.join(root, "local/index.ts"))
+        expect(added).not.toBe(initial)
+        expect(edited).not.toBe(added)
+        expect((await hashProjectState(root)).hash).toBe(initial)
     })
 })

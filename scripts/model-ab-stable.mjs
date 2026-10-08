@@ -218,7 +218,7 @@ for (const model of models) {
         const savedPath = resultPath(model, round, mode)
         if (process.env.RESUME_STABILITY !== "0" && fs.existsSync(savedPath)) {
           const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"))
-          if (saved.ok && saved.protocolVersion === protocolVersion && saved.modelVariant === modelVariant) {
+          if (saved.ok && saved.protocolVersion === protocolVersion && saved.modelVariant === modelVariant && saved.packageVersion === packageJson.version) {
             results.push(saved)
             console.log(`[${model}] round ${round}/${runs}: ${mode} (reused)`)
             continue
@@ -228,7 +228,7 @@ for (const model of models) {
         const result = await runArm({ model, round, mode, root: roots[mode], xdgConfig, prompt: prompts[mode] })
         results.push(result)
         console.log(`  ${result.ok ? "ok" : "FAIL"}; reads=${result.files.length}; input=${result.tokens.input}; total=${result.tokens.total}; quality=${result.quality}/6`)
-        if (result.ok) fs.writeFileSync(savedPath, JSON.stringify({ ...result, stderr: "", errors: [] }, null, 2) + "\n")
+        if (result.ok) fs.writeFileSync(savedPath, JSON.stringify({ ...result, packageVersion: packageJson.version, stderr: "", errors: [] }, null, 2) + "\n")
         if (result.spawnError) throw new Error(`OpenCode arm failed to execute: ${result.spawnError}; completed arms were saved and the next run will resume`)
         if (result.errors.some((error) => /usage limit|statusCode\\?":429|HTTP 429/i.test(error))) {
           throw new Error("OpenCode usage limit reached; valid completed arms were saved and the next run will resume")
@@ -285,7 +285,8 @@ for (const model of models) {
     const expectedGoblinRuns = mode === "cold" ? coldRuns : runs
     const allValid = baseline.ok === runs && goblin.ok === expectedGoblinRuns && goblin.quality === 6 && goblin.leaks === 0
     const stable = allValid && medians.reads >= 25 && medians.input > 0 && medians.total > 0
-    summaries.push({ model, mode, baseline, goblin, pairs, medians, allValid, result: stable ? "pass" : allValid && medians.reads > 0 ? "mixed" : "fail" })
+    const regressed = [medians.reads, medians.input, medians.total].some((value) => value < 0)
+    summaries.push({ model, mode, baseline, goblin, pairs, medians, allValid, result: stable ? "pass" : allValid && !regressed ? "mixed" : "fail" })
   }
 }
 

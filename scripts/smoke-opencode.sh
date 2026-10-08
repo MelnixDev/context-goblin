@@ -2,6 +2,11 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+opencode_bin="${OPENCODE_BIN:-$repo_root/node_modules/.bin/opencode}"
+if [ ! -x "$opencode_bin" ]; then
+  echo "OpenCode CLI not found at $opencode_bin"
+  exit 1
+fi
 
 npm run build
 
@@ -17,7 +22,7 @@ printf '{"compilerOptions":{"strict":true}}\n' > "$tmpdir/tsconfig.json"
 printf 'export function App() { return null }\n' > "$tmpdir/src/App.tsx"
 printf 'export const hello = "world";\n' > "$tmpdir/src/index.ts"
 printf 'API_KEY=super-secret-value\n' > "$tmpdir/.env"
-mkdir -p "$tmpdir/home" "$tmpdir/xdg"
+mkdir -p "$tmpdir/xdg" "$tmpdir/data" "$tmpdir/state" "$tmpdir/cache"
 
 cat > "$tmpdir/.opencode/plugins/context-goblin.js" <<EOF
 export { default } from "file://$repo_root/dist/src/index.js"
@@ -58,10 +63,14 @@ NODE
 
 resolved_config="$({
   cd "$tmpdir"
-  HOME="$tmpdir/home" \
-    XDG_CONFIG_HOME="$tmpdir/xdg" \
+  XDG_CONFIG_HOME="$tmpdir/xdg" \
+    XDG_DATA_HOME="$tmpdir/data" \
+    XDG_STATE_HOME="$tmpdir/state" \
+    XDG_CACHE_HOME="$tmpdir/cache" \
     OPENCODE_DISABLE_DEFAULT_PLUGINS=1 \
-    opencode debug config
+    OPENCODE_DISABLE_MODELS_FETCH=1 \
+    OPENCODE_TIMEOUT_MS="${OPENCODE_TIMEOUT_MS:-60000}" \
+    node "$repo_root/scripts/run-opencode.mjs" "$opencode_bin" debug config --print-logs --log-level INFO
 })"
 
 RESOLVED_CONFIG="$resolved_config" node --input-type=module <<'NODE'

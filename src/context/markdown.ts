@@ -9,9 +9,9 @@ export function contextSections(): string[] {
 }
 
 function formatScripts(scripts: Record<string, string>): string {
-  const entries = Object.entries(scripts)
-  if (entries.length === 0) return "- [NEEDS INPUT] No package scripts detected."
-  return entries.map(([name, command]) => `- ${name}: \`${command}\``).join("\n")
+  const names = Object.keys(scripts)
+  if (names.length === 0) return "- [NEEDS INPUT] No package scripts detected."
+  return names.map((name) => `- ${name}`).join("\n")
 }
 
 export function renderProjectContextMarkdown(input: {
@@ -19,7 +19,7 @@ export function renderProjectContextMarkdown(input: {
   stack: DetectedStack
   directoryMap: string[]
   codeMap: CodeMap
-  agents?: string
+  agentsPresent: boolean
 }): string {
   return `# Context Goblin Project Cache
 
@@ -60,6 +60,6 @@ Before scanning broad repository files:
 2. Inspect only the smallest file set needed for the task.
 3. Never read denied paths or secret-looking files.
 
-${input.agents ? `### Existing AGENTS.md\n\n${input.agents}` : "No AGENTS.md found."}
+${input.agentsPresent ? "AGENTS.md exists. Read it directly for the current instructions; its contents are not copied into this cache." : "No AGENTS.md found."}
 `
 }

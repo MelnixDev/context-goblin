@@ -81,7 +81,7 @@ describe("generateProjectContext", () => {
     expect(markdown).toContain("src/features/cart/CartDrawer.tsx")
     expect(markdown).toContain("CartDrawer")
     expect(markdown).toContain("tests/cartStore.test.ts")
-    expect(markdown).toContain("adds and removes items")
+    expect(markdown).not.toContain("adds and removes items")
   })
 
   it("prioritizes entry points and feature code in the code map", async () => {

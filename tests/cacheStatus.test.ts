@@ -62,4 +62,14 @@ describe("cacheStatus", () => {
     await fs.rm(path.join(root, CACHE_MARKDOWN))
     expect((await cacheStatus(root)).stale).toBe(true)
   })
+
+  it("reports stale when the cache format version changes", async () => {
+    const root = await tempProject()
+    await writeFile(root, "package.json", JSON.stringify({ name: "x" }))
+    await generateProjectContext({ rootDir: root })
+    const state = JSON.parse(await fs.readFile(path.join(root, CACHE_STATE), "utf8"))
+    state.version = "old-format"
+    await fs.writeFile(path.join(root, CACHE_STATE), JSON.stringify(state))
+    expect((await cacheStatus(root)).reason).toBe("cache format changed")
+  })
 })

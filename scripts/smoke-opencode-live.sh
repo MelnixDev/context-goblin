@@ -73,7 +73,7 @@ prompt='Use Context Goblin and no broad repository discovery. Call context_gobli
 
 set +e
 XDG_CONFIG_HOME="$xdg_config" \
-  "$opencode_bin" run --model "$model" --auto --format json --print-logs --log-level DEBUG --dir "$fixture" "$prompt" > "$events" 2> "$stderr_file"
+  node "$repo_root/scripts/run-opencode.mjs" "$opencode_bin" run --model "$model" --auto --format json --dir "$fixture" "$prompt" > "$events" 2> "$stderr_file"
 exit_code="$?"
 set -e
 
@@ -106,7 +106,7 @@ for (const tool of forbiddenTools) {
   if (tools.includes(tool)) failures.push(`forbidden broad-discovery tool was called: ${tool}`)
 }
 if (errors.length) {
-  const summaries = errors.map((record) => JSON.stringify(record.error ?? record)).join("; ")
+  const summaries = errors.map((record) => record.error?.data?.message || record.error?.name || "Unknown error").join("; ")
   failures.push(`OpenCode emitted ${errors.length} error event(s): ${summaries}`)
 }
 if (!finalText.includes("LIVE_SMOKE_OK")) failures.push("final answer is missing LIVE_SMOKE_OK")

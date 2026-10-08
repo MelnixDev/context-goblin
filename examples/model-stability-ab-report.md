@@ -15,8 +15,9 @@ measurements. No stability claim is made from them.
 
 ## Valid evidence already available
 
-- Live smoke passed on `openai/gpt-5.5` and `openai/gpt-5.6-sol` with the required
-  `status → refresh → read → stats` tool sequence.
+- Live smoke passed on `openai/gpt-5.5` and `openai/gpt-5.6-sol` with the legacy
+  `status → refresh → read → stats` sequence. The single-call `context_goblin_get`
+  flow also passed a live smoke on `gpt-5.6-sol`.
 - Single-call one-shot A/B passed on both models with answer quality `6/6` and no
   secret leakage. File-read reductions were 44% (`gpt-5.5`) and 35% (`gpt-5.6-sol`).
 - Input-token reductions were 28% and 45%; total-event-token reductions were 47%

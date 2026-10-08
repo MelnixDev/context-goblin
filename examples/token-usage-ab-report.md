@@ -1,8 +1,8 @@
 # Context Goblin Token Usage A/B Report
 
-Generated: 2026-09-04T18:52:17.447Z
+Generated: 2026-10-08T07:38:23.687Z
 OpenCode version: 1.18.20
-Context Goblin version: 0.1.21
+Context Goblin version: 0.1.22
 Model group: custom
 
 ## Task
@@ -14,16 +14,18 @@ Measure token usage while planning where and how to add a "Save for later" featu
 - Each arm receives a fresh copy of the same synthetic fixture.
 - The `task`, `bash`, and `edit` tools are explicitly denied so repository reads remain visible and comparable in the parent OpenCode event stream.
 - Models may use direct `read`, `glob`, and `grep` tools; the Context Goblin arm may additionally use Context Goblin tools.
+- File-read counts are distinct files read by the built-in `read` tool; `glob` and `grep` inputs do not count as file reads.
 - Results are one run per model and arm. Model behavior and provider token accounting can vary between runs.
-- Compatibility passes only when both arms complete, required Goblin tools and cache safety checks pass, and answer quality is sufficient.
+- Compatibility passes only when both arms complete, the single-call tool flow and safety checks pass, and both answers cover all six checklist items and the required feature scope.
+- The 6/6 checklist measures answer coverage, not independent proof of semantic correctness. Read the captured answers before making a quality claim.
 - Overall efficiency passes only when file reads, uncached input tokens, and total event tokens all improve. Any regression fails; `mixed` is reserved for non-regressing but flat or unavailable evidence.
 
 ## Summary
 
 | Model | Baseline Input | Goblin Input | Input Saved | Input Status | Baseline Total | Goblin Total | Total Saved | Total Status | Baseline Reads | Goblin Reads | File Saved | File Status | Cache Size | Token Result |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- |
-| openai/gpt-5.5 | 13145 | 9530 | 28% | pass | 48093 | 25356 | 47% | pass | 16 | 9 | 44% | pass | 2587 | pass |
-| openai/gpt-5.6-sol | 11840 | 6496 | 45% | pass | 41531 | 27056 | 35% | pass | 17 | 11 | 35% | pass | 2587 | pass |
+| openai/gpt-5.5 | 11610 | 14880 | -28% | fail | 36385 | 33824 | 7% | pass | 17 | 8 | 53% | pass | 2449 | fail |
+| openai/gpt-5.6-sol | 16542 | 8051 | 51% | pass | 40999 | 27056 | 34% | pass | 17 | 9 | 47% | pass | 2449 | pass |
 
 ## openai/gpt-5.5
 
@@ -34,349 +36,39 @@ Measure token usage while planning where and how to add a "Save for later" featu
 - Tool use OK: true
 - Answer OK: true
 - Compatibility result: pass
-- Overall efficiency result: pass
-- Baseline direct file reads: 16
-- Context Goblin built-in file reads: 9
-- File-read reduction: 44%
-- File-read status: pass
-- Input-token reduction: 28%
-- Input-token status: pass
-- Total-token reduction: 47%
-- Total-token status: pass
-- Quality score: 6/6
-- Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
-- Required quality hits: save-for-later feature, cart state, cart UI, cart tests
-- Quality disqualifiers: none
-- Cache size: 2587 bytes
-- Secret leakage: none detected
-- Baseline errors: 0
-- Context Goblin errors: 0
-
-### Baseline
-
-- Duration: 62000ms
-- Tool calls: 21
-- Input tokens: 13145
-- Output tokens: 2524
-- Reasoning tokens: 168
-- Cache read tokens: 32256
-- Total event tokens: 48093
-- Cost: 0
-
-Tool counts:
-
-- glob: 3
-- grep: 2
-- read: 16
-
-Files read:
-
-- README.md
-- package.json
-- src/App.tsx
-- src/api/client.ts
-- src/components/Button.tsx
-- src/components/Header.tsx
-- src/features/cart/CartDrawer.tsx
-- src/features/cart/cartStore.ts
-- src/features/catalog/ProductCard.tsx
-- src/features/catalog/ProductList.tsx
-- src/main.tsx
-- src/routes.tsx
-- src/styles/theme.css
-- tests/cartStore.test.ts
-- tsconfig.json
-- vite.config.ts
-
-Errors:
-
-- none
-
-Final answer:
-
-```txt
-**Stack**
-React + Vite + TypeScript, tested with Vitest. Cart state is currently an in-memory module in `src/features/cart/cartStore.ts`, not Zustand despite `zustand` being listed in `package.json`.
-
-**Inspection Commands**
-Used only built-in `glob`, `grep`, and `read` tools. No bash, task/subagents, edits, or `.env` reads.
-
-Inspected via:
-`glob **/*`
-`glob **/package.json`
-`glob **/*.{test,spec}.{ts,tsx,js,jsx}`
-`grep cart|Cart|checkout|Checkout`
-`grep save|saved|later|wishlist|wish|CartItem|Product`
-`read <focused files>`
-
-**Project Commands**
-Available scripts from `package.json`:
-`npm run dev`
-`npm run build`
-`npm test`
-`npm run lint`
-
-**Entry Points**
-`src/App.tsx`: renders `Header` and `routes.catalog`.
-`src/routes.tsx`: renders `ProductList` and `CartDrawer`.
-`src/features/catalog/ProductCard.tsx`: calls `addToCart(product)`.
-`src/features/cart/CartDrawer.tsx`: displays cart items and removes them.
-`src/features/cart/cartStore.ts`: owns cart data and behavior.
-`tests/cartStore.test.ts`: existing cart behavior test location.
-
-**Exact Files Inspected**
-`AGENTS.md`
-`README.md`
-`package.json`
-`tsconfig.json`
-`vite.config.ts`
-`src/App.tsx`
-`src/main.tsx`
-`src/routes.tsx`
-`src/api/client.ts`
-`src/components/Button.tsx`
-`src/components/Header.tsx`
-`src/styles/theme.css`
-`src/features/cart/cartStore.ts`
-`src/features/cart/CartDrawer.tsx`
-`src/features/catalog/ProductCard.tsx`
-`src/features/catalog/ProductList.tsx`
-`tests/cartStore.test.ts`
-
-**Implementation Plan**
-1. Extend `src/features/cart/cartStore.ts` with a separate saved-for-later collection:
-   - Add `let savedItems: Product[] = []`.
-   - Add `saveForLater(productId: string)` that finds a cart item, removes it from `items`, and stores one product record in `savedItems`.
-   - Add `moveToCart(productId: string)` that finds a saved item, removes it from `savedItems`, and calls `addToCart`.
-   - Add `removeFromSaved(productId: string)` if UI needs deletion from saved list.
-   - Add `getSavedItems()`.
-   - Update `clearCart()` to reset both cart and saved items for test isolation.
-
-2. Update `src/features/cart/CartDrawer.tsx`:
-   - Import `getSavedItems`, `saveForLater`, and optionally `moveToCart` / `removeFromSaved`.
-   - Render cart items with both `Remove` and `Save for later` actions.
-   - Render a saved-for-later section below the cart.
-   - Add `Move to cart` for saved items if the desired behavior includes restoring items.
-
-3. Keep catalog code unchanged:
-   - `ProductCard.tsx` should continue adding products to the active cart only.
-   - No route changes appear necessary because `CartDrawer` already renders with the catalog route.
-
-4. Add/extend tests in `tests/cartStore.test.ts`:
-   - Verify saving an item removes it from cart.
-   - Verify saved item appears in `getSavedItems()`.
-   - Verify moving a saved item back to cart removes it from saved items.
-   - Verify quantity behavior is preserved when saving duplicate cart items.
-   - Verify `clearCart()` resets both active and saved collections.
-
-**Risks**
-`CartDrawer` calls plain module functions, so mutations may not trigger React re-render in a real mounted app unless some parent re-renders. Existing code already has this limitation for remove/add behavior.
-`getCartItems()` currently returns the mutable backing array, so tests or UI could mutate store state accidentally.
-Saving a cart item with `quantity > 1` needs a product decision: save the whole line item, save one unit, or save product metadata without quantity.
-No persistence exists, so saved-for-later items disappear on reload.
-`main.tsx` exports `App` but does not mount React, suggesting this is a fixture rather than a complete running app.
-
-**Tests**
-Recommended verification:
-`npm test`
-`npm run build`
-`npm run lint`
-
-Primary test file to update:
-`tests/cartStore.test.ts`
-
-**Safety Exclusions**
-Did not read `.env`.
-Did not modify files.
-Did not use bash.
-Did not use task/subagents.
-Did not inspect dependency internals or generated folders.
-```
-
-### Context Goblin
-
-- Duration: 50000ms
-- Tool calls: 10
-- context_goblin_get: yes
-- context_goblin_status: no
-- context_goblin_refresh: no
-- context_goblin_read: no
-- Input tokens: 9530
-- Output tokens: 1901
-- Reasoning tokens: 101
-- Cache read tokens: 13824
-- Total event tokens: 25356
-- Cost: 0
-
-Tool counts:
-
-- context_goblin_get: 1
-- read: 9
-
-Files read:
-
-- package.json
-- src/App.tsx
-- src/components/Button.tsx
-- src/features/cart/CartDrawer.tsx
-- src/features/cart/cartStore.ts
-- src/features/catalog/ProductCard.tsx
-- src/features/catalog/ProductList.tsx
-- src/routes.tsx
-- tests/cartStore.test.ts
-
-Errors:
-
-- none
-
-Final answer:
-
-```txt
-**Stack**
-- TypeScript
-- React
-- Vite
-- Vitest
-- Zustand is installed, but current cart state does not use it
-
-**Commands**
-- Dev: `vite`
-- Build: `tsc && vite build`
-- Test: `vitest`
-- Lint: `eslint src --ext ts,tsx`
-
-**Entry Points**
-- App entry: `src/main.tsx`
-- App shell: `src/App.tsx`
-- Route composition: `src/routes.tsx`
-- Catalog UI: `src/features/catalog/ProductList.tsx`
-- Add-to-cart action: `src/features/catalog/ProductCard.tsx`
-- Cart UI: `src/features/cart/CartDrawer.tsx`
-- Cart state: `src/features/cart/cartStore.ts`
-
-**Files Inspected**
-- `package.json`
-- `src/features/cart/cartStore.ts`
-- `src/features/cart/CartDrawer.tsx`
-- `src/features/catalog/ProductCard.tsx`
-- `src/features/catalog/ProductList.tsx`
-- `src/routes.tsx`
-- `src/App.tsx`
-- `src/components/Button.tsx`
-- `tests/cartStore.test.ts`
-
-**Recommended Files To Change**
-- `src/features/cart/cartStore.ts`
-- `src/features/cart/CartDrawer.tsx`
-- `tests/cartStore.test.ts`
-
-Optional, only if a catalog-level restore/add interaction is desired:
-- `src/features/catalog/ProductCard.tsx`
-
-**Implementation Plan**
-1. Extend `src/features/cart/cartStore.ts` with a second module-level array, likely `savedItems: Product[]` or `SavedItem[]`.
-2. Add exports:
-   - `saveForLater(productId: string)`: find item in `items`, remove it from cart, add it to saved list if not already saved.
-   - `moveSavedToCart(productId: string)`: find saved item, remove it from saved list, call `addToCart`.
-   - `removeSavedItem(productId: string)`: remove from saved list only.
-   - `getSavedItems()`: return saved list.
-3. Update `clearCart()` behavior carefully:
-   - For test isolation, either keep `clearCart()` clearing only cart and add `clearSavedItems()`, or make it clear both if it is intended as a full store reset.
-   - Best minimal approach: add `clearSavedItems()` and update tests’ `beforeEach` to call both.
-4. Update `src/features/cart/CartDrawer.tsx`:
-   - Import `saveForLater`, `getSavedItems`, `moveSavedToCart`, and optionally `removeSavedItem`.
-   - For each cart item, render both `Remove {item.name}` and `Save for later {item.name}`.
-   - Render a saved-for-later section below cart items.
-   - For each saved item, render `Move to cart {item.name}` and optionally `Remove saved {item.name}`.
-5. Add tests in `tests/cartStore.test.ts`:
-   - Saving an item removes it from cart and adds it to saved items.
-   - Saving the same product twice does not duplicate saved entries.
-   - Moving saved item to cart removes it from saved list and restores it to cart.
-   - Removing from cart still does not affect saved items unless explicitly intended.
-   - Reset helper clears both arrays between tests.
-
-**Behavioral Shape**
-- Cart item type can stay `CartItem extends Product { quantity: number }`.
-- Saved item type should probably be plain `Product`, because quantity in cart should not necessarily persist while saved unless product requirements say otherwise.
-- If saving a cart item with `quantity > 1`, define expected behavior before implementation:
-  - Minimal likely behavior: saving removes the entire cart line and saves one product reference.
-  - Alternative: persist quantity in saved items and restore the same quantity later.
-
-**Risks**
-- Current state is module-level and not reactive; `CartDrawer` may not re-render after save/remove unless something else triggers render. This is already a risk with the existing `addToCart`/`removeFromCart` implementation.
-- Zustand is installed but unused. A more correct React implementation would likely migrate `cartStore.ts` to a reactive Zustand store, but that is a larger change.
-- `getCartItems()` currently returns the mutable backing array. Tests or UI could mutate it accidentally. Same risk would apply to `getSavedItems()` unless it returns a copy.
-- Persisted storage is absent. Saved-for-later items would be lost on page refresh unless local storage/API persistence is added.
-- Quantity semantics need a product decision for “save for later” on multi-quantity cart lines.
-
-**Tests**
-- Run: `vitest`
-- Run: `tsc && vite build`
-- Optional lint check: `eslint src --ext ts,tsx`
-
-**Safety Exclusions**
-- Did not read or modify `.env`.
-- Did not modify any files.
-- Excluded by Context Goblin cache:
-  - `.env`
-  - `.env.*`
-  - `*.pem`
-  - `*.key`
-  - `secrets.json`
-  - `credentials.json`
-  - `node_modules/**`
-  - `.git/**`
-  - `dist/**`
-  - `build/**`
-  - `coverage/**`
-  - `.next/**`
-  - `.nuxt/**`
-  - `.output/**`
-  - `.opencode/cache/context-goblin/**`
-```
-
-## openai/gpt-5.6-sol
-
-### Summary
-
-- Baseline completed: true
-- Context Goblin completed and validated: true
-- Tool use OK: true
-- Answer OK: true
-- Compatibility result: pass
-- Overall efficiency result: pass
+- Overall efficiency result: fail
 - Baseline direct file reads: 17
-- Context Goblin built-in file reads: 11
-- File-read reduction: 35%
+- Context Goblin built-in file reads: 8
+- File-read reduction: 53%
 - File-read status: pass
-- Input-token reduction: 45%
-- Input-token status: pass
-- Total-token reduction: 35%
+- Input-token reduction: -28%
+- Input-token status: fail
+- Total-token reduction: 7%
 - Total-token status: pass
 - Quality score: 6/6
 - Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
 - Required quality hits: save-for-later feature, cart state, cart UI, cart tests
 - Quality disqualifiers: none
-- Cache size: 2587 bytes
+- Cache size: 2449 bytes
 - Secret leakage: none detected
 - Baseline errors: 0
 - Context Goblin errors: 0
 
 ### Baseline
 
-- Duration: 83000ms
-- Tool calls: 30
-- Input tokens: 11840
-- Output tokens: 3185
-- Reasoning tokens: 650
-- Cache read tokens: 25856
-- Total event tokens: 41531
+- Duration: 32000ms
+- Tool calls: 19
+- Input tokens: 11610
+- Output tokens: 2075
+- Reasoning tokens: 172
+- Cache read tokens: 22528
+- Total event tokens: 36385
 - Cost: 0
 
 Tool counts:
 
-- glob: 9
-- grep: 4
+- glob: 1
+- grep: 1
 - read: 17
 
 Files read:
@@ -406,183 +98,267 @@ Errors:
 Final answer:
 
 ```txt
-**Repository Assessment**
-
-The repository is a minimal React/Vite/TypeScript fixture. The cart is synchronous, module-scoped, and non-reactive. Adding or removing an item mutates state, but mounted components are not notified to rerender.
-
 **Stack**
+- React + TypeScript + Vite
+- Vitest for tests
+- ESLint configured via `package.json`
+- `zustand` dependency exists but current cart state is a module-level array, not Zustand-backed
 
-- React and React DOM, version `latest`
-- TypeScript with strict mode
-- Vite
-- Vitest
-- Zustand installed but currently unused
-- ESLint
-- No router library; `src/routes.tsx` contains a static element map
-- No persistence layer
-- No component-testing library
-- No lockfile found
-- No browser entry/bootstrap or `index.html` found; `src/main.tsx` only re-exports `App`
-
-**Commands**
-
-From `package.json`:
-
-- Development: `npm run dev`
-- Production build/type-check: `npm run build`
-- Tests in watch mode: `npm test`
-- One-shot tests: `npm test -- --run`
-- Lint: `npm run lint`
-
-No commands were executed because the request allowed only read, glob, and grep tools.
+**Commands / Tool Queries Used**
+- `glob("**/*")`
+- `grep("cart|Cart|basket|Basket|checkout|Checkout", include="*.{js,jsx,ts,tsx,json,md}")`
+- `read(...)` on focused project files only
+- No shell commands were run.
 
 **Entry Points**
-
-- Application export: `src/main.tsx:1`
-- Root component: `src/App.tsx:3`
-- Catalog/cart composition: `src/routes.tsx:3`
-- Product-to-cart action: `src/features/catalog/ProductCard.tsx:3`
-- Cart UI: `src/features/cart/CartDrawer.tsx:2`
-- Cart state and operations: `src/features/cart/cartStore.ts:1`
-- Existing cart tests: `tests/cartStore.test.ts:1`
-
-**Current Cart Flow**
-
-- `ProductCard` calls `addToCart(product)`.
-- `cartStore.ts` stores `CartItem[]` in module scope.
-- Repeated additions increment `quantity`.
-- `CartDrawer` calls `getCartItems()` during render.
-- Cart removal calls `removeFromCart(item.id)`.
-- No subscription triggers React updates after mutations.
-- `clearCart()` is primarily used for test isolation.
-- Quantity and price are not displayed in the drawer.
-
-**Implementation Plan**
-
-1. Refactor `src/features/cart/cartStore.ts` into a reactive Zustand store while keeping cart behavior centralized.
-2. Represent state with two collections:
-   - Active cart items
-   - Saved-for-later items
-3. Add operations:
-   - `saveForLater(productId)` moves an active line to saved items.
-   - `moveToCart(productId)` moves a saved line back to the active cart.
-   - `removeSavedItem(productId)` permanently removes a saved item.
-   - `clearCart()` resets both collections for deterministic tests.
-4. Preserve quantity when saving and restoring.
-5. If restoring a SKU already present in the cart, merge quantities rather than creating duplicate active lines.
-6. Keep saved and active entries distinct while they remain in their respective collections; adding a catalog product already saved can create/increment the active line without silently deleting the saved line unless product requirements specify otherwise.
-7. Update `src/features/catalog/ProductCard.tsx` to invoke a reactive store action.
-8. Update `src/features/cart/CartDrawer.tsx` to subscribe to active and saved collections.
-9. Render separate “Cart” and “Saved for later” sections.
-10. Add “Save for later” beside each active item.
-11. Add “Move to cart” and “Remove” controls for each saved item.
-12. Include item name, quantity, and price so users can distinguish and verify moved lines.
-13. Reuse `src/components/Button.tsx` only if shared behavior or styling is added; it currently provides no value over a native button.
-14. Avoid API and persistence changes because there is no cart backend contract or existing persistence mechanism.
-
-A smaller alternative is to retain the current exported functions and add a manual subscription mechanism, but Zustand is already installed and directly solves the React synchronization defect.
-
-**Tests**
-
-Extend `tests/cartStore.test.ts` with focused store tests:
-
-- Saving moves an item out of the active cart.
-- Saving places it in the saved collection.
-- Saving preserves product data and quantity.
-- Moving a saved item restores it to the cart.
-- Moving back removes it from saved items.
-- Moving back merges quantities when the SKU is already active.
-- Unknown IDs are no-ops and do not corrupt either collection.
-- Removing a saved item does not affect active items.
-- Repeated catalog additions still increment active quantity.
-- `clearCart()` clears active and saved collections.
-- Test setup resets all store state between cases.
-
-UI interaction tests would require adding a component-testing dependency such as React Testing Library. Given the current dependency set, store-level tests are the minimal appropriate coverage. If UI test dependencies are approved, add `tests/CartDrawer.test.tsx` covering button actions and section updates.
-
-Verification commands after implementation:
-
-```text
-npm test -- --run
-npm run build
-npm run lint
-```
-
-**Risks And Decisions**
-
-- The present cart UI does not rerender after mutations. Adding the feature without fixing reactivity would produce apparently nonfunctional buttons.
-- “Save for later” persistence is unspecified. The recommended scope is in-memory only, matching the current cart.
-- Quantity semantics are unspecified. The recommendation is to preserve quantity and merge on restoration.
-- Catalog-add behavior for a SKU already saved is unspecified. This should be confirmed if active and saved copies must be mutually exclusive.
-- Product identity relies only on `id`; variants are unsupported.
-- Prices are stored as plain numbers with no currency metadata.
-- Zustand is `latest`, so behavior is not reproducible without a lockfile.
-- The application fixture appears incomplete for browser execution because no `index.html` or React DOM mount was found.
-- ESLint configuration was not found, so `npm run lint` may fail independently of the feature.
-- No accessibility or visual conventions exist beyond native elements and one color-scheme rule.
+- App composition: `src/App.tsx`
+- Route composition: `src/routes.tsx`
+- Catalog add-to-cart UI: `src/features/catalog/ProductCard.tsx`
+- Cart UI: `src/features/cart/CartDrawer.tsx`
+- Cart state/actions: `src/features/cart/cartStore.ts`
+- Cart tests: `tests/cartStore.test.ts`
 
 **Exact Files Inspected**
-
 - `AGENTS.md`
 - `README.md`
 - `package.json`
 - `tsconfig.json`
 - `vite.config.ts`
-- `src/main.tsx`
 - `src/App.tsx`
+- `src/main.tsx`
 - `src/routes.tsx`
 - `src/api/client.ts`
 - `src/components/Button.tsx`
 - `src/components/Header.tsx`
 - `src/styles/theme.css`
-- `src/features/catalog/ProductCard.tsx`
-- `src/features/catalog/ProductList.tsx`
 - `src/features/cart/cartStore.ts`
 - `src/features/cart/CartDrawer.tsx`
+- `src/features/catalog/ProductCard.tsx`
+- `src/features/catalog/ProductList.tsx`
 - `tests/cartStore.test.ts`
 
-**Safety Exclusions**
+**Implementation Plan**
+1. Extend `src/features/cart/cartStore.ts` with a second module-level collection, likely `savedItems: CartItem[] = []`.
+2. Add store APIs:
+   - `saveForLater(productId: string)`: move an item from `items` to `savedItems`.
+   - `moveToCart(productId: string)`: move an item from `savedItems` back to `items`, merging quantity if the item already exists in cart.
+   - `getSavedItems()`: return saved items.
+   - Update `clearCart()` to clear both cart and saved state for test isolation.
+3. Update `src/features/cart/CartDrawer.tsx`:
+   - Import `saveForLater`, `moveToCart`, and `getSavedItems`.
+   - Render current cart items with both `Remove` and `Save for later` actions.
+   - Render saved items in a separate section with `Move to cart`.
+4. Add cart behavior tests in `tests/cartStore.test.ts`:
+   - Saving an item removes it from cart and adds it to saved items.
+   - Moving saved item back removes it from saved items and restores it to cart.
+   - Moving saved item into a cart that already contains the same product merges quantities.
+   - `clearCart()` clears both active and saved items.
+5. Optional small cleanup:
+   - Consider returning shallow copies from `getCartItems()` and `getSavedItems()` to avoid external mutation, but this is broader behavior and should be weighed against minimality.
 
+**Risks**
+- Current module-level array mutations do not trigger React re-renders by themselves; existing UI already has this limitation. The new feature can follow existing behavior, but the UI may not visually update unless some parent re-renders.
+- `getCartItems()` currently returns the live array, so callers/tests could mutate state accidentally.
+- `saveForLater` semantics need a product decision: save full quantity as one saved item, or save one unit at a time. I would default to moving the full cart line item.
+- If saved items should persist across sessions, current in-memory store is insufficient. No persistence currently exists.
+- `zustand` is installed but unused; introducing it would be a larger architectural change and not necessary for a minimal feature.
+
+**Tests**
+- Run `npm test` for Vitest cart-store coverage.
+- Run `npm run build` for TypeScript/build validation.
+- If lint config is complete in the environment, run `npm run lint`.
+
+**Safety Exclusions**
 - Did not read `.env`.
-- Did not inspect secret values or environment configuration.
-- Did not modify or create files.
-- Did not use Bash, task tools, subagents, or external tools.
-- Did not run package installation, tests, builds, linting, or development servers.
-- Did not inspect `opencode.json` because it is unrelated to application cart behavior.
-- Did not propose backend synchronization, authentication, storage migrations, checkout changes, or analytics without supporting repository contracts.
+- Did not modify files.
+- Did not use task/subagents.
+- Did not use bash or shell commands.
+- Used only built-in `read`, `glob`, and `grep` tools.
 ```
 
 ### Context Goblin
 
-- Duration: 72000ms
-- Tool calls: 13
+- Duration: 30000ms
+- Tool calls: 11
 - context_goblin_get: yes
 - context_goblin_status: no
 - context_goblin_refresh: no
 - context_goblin_read: no
-- Input tokens: 6496
-- Output tokens: 1979
-- Reasoning tokens: 1045
-- Cache read tokens: 17536
-- Total event tokens: 27056
+- Input tokens: 14880
+- Output tokens: 1820
+- Reasoning tokens: 228
+- Cache read tokens: 16896
+- Total event tokens: 33824
 - Cost: 0
 
 Tool counts:
 
 - context_goblin_get: 1
 - glob: 1
-- read: 11
+- grep: 1
+- read: 8
 
 Files read:
 
 - package.json
-- src/App.tsx
 - src/components/Button.tsx
 - src/features/cart/CartDrawer.tsx
 - src/features/cart/cartStore.ts
 - src/features/catalog/ProductCard.tsx
+- src/features/catalog/ProductList.tsx
+- src/routes.tsx
+- tests/cartStore.test.ts
+
+Errors:
+
+- none
+
+Final answer:
+
+```txt
+**Stack**
+- TypeScript, React, Vite, Node.js
+- State is currently plain module-level in-memory data in `src/features/cart/cartStore.ts`
+- Package manager is not pinned at repo root; no root lockfile found
+
+**Commands**
+- `npm run dev`: Vite dev server
+- `npm run build`: `tsc && vite build`
+- `npm run test`: Vitest
+- `npm run lint`: ESLint over `src --ext ts,tsx`
+
+**Entry Points**
+- App entry: `src/main.tsx`
+- App composition: `src/App.tsx`
+- Route composition: `src/routes.tsx`
+- Catalog UI: `src/features/catalog/ProductList.tsx`
+- Add-to-cart interaction: `src/features/catalog/ProductCard.tsx`
+- Cart UI: `src/features/cart/CartDrawer.tsx`
+- Cart state/actions: `src/features/cart/cartStore.ts`
+
+**Files Inspected**
+- `package.json`
+- `src/features/cart/cartStore.ts`
+- `src/features/cart/CartDrawer.tsx`
+- `src/features/catalog/ProductCard.tsx`
+- `src/features/catalog/ProductList.tsx`
+- `src/routes.tsx`
+- `src/components/Button.tsx`
+- `tests/cartStore.test.ts`
+
+**Recommended Files To Change**
+- `src/features/cart/cartStore.ts`
+- `src/features/cart/CartDrawer.tsx`
+- `tests/cartStore.test.ts`
+
+Optional only if UX needs a product-level restore/add affordance:
+- `src/features/catalog/ProductCard.tsx`
+
+**Implementation Plan**
+1. Extend `src/features/cart/cartStore.ts` with a second module-level collection for saved items.
+2. Add a new exported type if useful, likely reusing `Product` for saved items and keeping `CartItem` for active cart items.
+3. Add `saveForLater(productId: string)`:
+   - Find the cart item by `id`.
+   - Remove it from `items`.
+   - Add the product fields to `savedItems` if not already saved.
+   - Drop `quantity` when saving, unless product quantity should be preserved by requirement.
+4. Add `moveSavedToCart(productId: string)`:
+   - Find saved item by `id`.
+   - Remove it from `savedItems`.
+   - Call `addToCart(product)` to restore it to the cart.
+5. Add `getSavedItems()` for rendering and tests.
+6. Update `clearCart()` to reset both active cart and saved-for-later state so existing test isolation remains reliable.
+7. Update `src/features/cart/CartDrawer.tsx`:
+   - Import `saveForLater`, `getSavedItems`, and `moveSavedToCart`.
+   - Render active cart items with both `Remove` and `Save for later` actions.
+   - Render a separate saved-for-later section with a `Move to cart` action.
+8. Add cart-store tests in `tests/cartStore.test.ts`:
+   - Saving removes the item from cart.
+   - Saving exposes the item via `getSavedItems()`.
+   - Saving the same product does not duplicate saved items.
+   - Moving saved item back adds it to cart and removes it from saved items.
+   - `clearCart()` clears both collections.
+
+**Risks**
+- Current store is not reactive. `CartDrawer` calls `getCartItems()` during render, but store mutations alone may not trigger React re-rendering. The new feature can follow the existing architecture, but UI updates may remain stale unless a parent render occurs.
+- Existing `zustand` dependency suggests the app may be intended to use a reactive store, but current implementation does not. A larger fix would migrate cart state to Zustand, but that is beyond the minimal “Save for later” change.
+- Quantity semantics need a product decision: saving could discard quantity or preserve it. Minimal UX usually saves the product once and restores quantity `1`.
+- In-memory state means saved items disappear on refresh. Persistence should not be added unless explicitly required.
+
+**Tests**
+- Recommended verification:
+  - `npm run test`
+  - `npm run build`
+  - `npm run lint`
+- Most important added coverage belongs in `tests/cartStore.test.ts` because project instructions specifically prefer tests for cart behavior changes.
+
+**Safety Exclusions**
+- Did not read `.env` or secret-looking files.
+- Did not inspect denied/cache/build paths.
+- Did not modify files.
+- Did not use bash, task/subagents, or extra Context Goblin calls beyond the requested single `context_goblin_get`.
+```
+
+## openai/gpt-5.6-sol
+
+### Summary
+
+- Baseline completed: true
+- Context Goblin completed and validated: true
+- Tool use OK: true
+- Answer OK: true
+- Compatibility result: pass
+- Overall efficiency result: pass
+- Baseline direct file reads: 17
+- Context Goblin built-in file reads: 9
+- File-read reduction: 47%
+- File-read status: pass
+- Input-token reduction: 51%
+- Input-token status: pass
+- Total-token reduction: 34%
+- Total-token status: pass
+- Quality score: 6/6
+- Quality hits: cartStore.ts, CartDrawer.tsx, catalog product file, tests, risks, safety exclusions
+- Required quality hits: save-for-later feature, cart state, cart UI, cart tests
+- Quality disqualifiers: none
+- Cache size: 2449 bytes
+- Secret leakage: none detected
+- Baseline errors: 0
+- Context Goblin errors: 0
+
+### Baseline
+
+- Duration: 86000ms
+- Tool calls: 28
+- Input tokens: 16542
+- Output tokens: 3214
+- Reasoning tokens: 763
+- Cache read tokens: 20480
+- Total event tokens: 40999
+- Cost: 0
+
+Tool counts:
+
+- glob: 8
+- grep: 3
+- read: 17
+
+Files read:
+
+- AGENTS.md
+- README.md
+- package.json
+- src/App.tsx
+- src/api/client.ts
+- src/components/Button.tsx
+- src/components/Header.tsx
+- src/features/cart/CartDrawer.tsx
+- src/features/cart/cartStore.ts
+- src/features/catalog/ProductCard.tsx
+- src/features/catalog/ProductList.tsx
 - src/main.tsx
 - src/routes.tsx
+- src/styles/theme.css
 - tests/cartStore.test.ts
 - tsconfig.json
 - vite.config.ts
@@ -595,99 +371,278 @@ Final answer:
 
 ```txt
 **Stack**
-- TypeScript, React, Vite, Vitest
-- Zustand is installed but currently unused
-- Package manager is unresolved: no root lockfile was found
-- State is currently an in-memory mutable singleton with no persistence or reactive subscription
+- React with TypeScript and JSX.
+- Vite build/dev tooling.
+- Vitest for unit tests.
+- Zustand is installed but currently unused.
+- State is currently held in module-level mutable arrays.
+- No persistence, backend cart API, router library, DOM test environment, or component-testing library was found.
+- No lockfile was found.
 
 **Commands**
-- Development: `npm run dev`
-- Tests once: `npm test -- --run`
-- Lint: `npm run lint`
-- Build/type-check: `npm run build`
+Relevant existing commands from `package.json`:
 
-These use npm as an invocation convention only; the repository does not identify a package manager.
+```sh
+npm run dev
+npm run build
+npm run test -- --run
+npm run lint
+```
+
+Recommended verification sequence after implementation:
+
+```sh
+npm run test -- --run
+npm run build
+npm run lint
+```
+
+No commands were executed because inspection was limited to built-in `read`, `glob`, and `grep` tools.
 
 **Entry Points**
-- Application export: `src/main.tsx`
-- Root component: `src/App.tsx`
-- Catalog/cart composition: `src/routes.tsx`
-- Add-to-cart interaction: `src/features/catalog/ProductCard.tsx`
-- Cart UI: `src/features/cart/CartDrawer.tsx`
-- Cart state: `src/features/cart/cartStore.ts`
+- `src/main.tsx:1` exports `App`; it does not mount React itself.
+- `src/App.tsx:3` renders the header and catalog route.
+- `src/routes.tsx:3` composes `ProductList` and `CartDrawer`.
+- `src/features/catalog/ProductCard.tsx:3` invokes `addToCart`.
+- `src/features/cart/CartDrawer.tsx:2` renders current cart items and invokes `removeFromCart`.
+- `src/features/cart/cartStore.ts:3` owns the module-level cart state and mutations.
+- `tests/cartStore.test.ts:4` is the existing cart behavior test suite.
 
-`src/main.tsx` exports `App` but does not mount it with `createRoot`; this may be an intentionally minimal fixture.
+**Current Behavior**
+- `addToCart` adds a line or increments its quantity.
+- `removeFromCart` removes the complete line.
+- `clearCart` resets cart state.
+- The drawer only renders remove buttons; it does not show quantities or totals.
+- Store mutations do not notify React. Adding, removing, or saving an item will not reliably update the rendered UI unless some unrelated render occurs.
+- `getCartItems` returns the mutable backing array, allowing callers to mutate state without store operations.
 
-**Recommended Changes**
-1. Update `src/features/cart/cartStore.ts`.
-   - Represent both `items` and `savedItems`.
-   - Add atomic `saveForLater(productId)` and `moveToCart(productId)` operations.
-   - Preserve quantity when saving.
-   - When moving an item back, merge its quantity if the same product is already in the cart.
-   - Prevent duplicate saved entries.
-   - Make state reactive, preferably through the already-installed Zustand dependency, so cart and saved-item actions rerender the UI.
-   - Make `clearCart()` reset both collections for deterministic tests.
+**Implementation Plan**
+1. Refactor `src/features/cart/cartStore.ts` into reactive Zustand state, using the dependency already present.
+2. Define state with `cartItems` and `savedItems`.
+3. Keep cart-line data as `Product & { quantity: number }`.
+4. Add explicit actions:
+   - `addToCart(product)`
+   - `removeFromCart(productId)`
+   - `saveForLater(productId)`
+   - `moveToCart(productId)`
+   - `removeSavedItem(productId)`
+   - `clearCart()`
+5. Make `saveForLater` atomically remove the complete cart line and append it to saved items, preserving quantity.
+6. Make `moveToCart` atomically remove the saved line and restore it. If the SKU is already in the cart, merge quantities rather than creating duplicate lines.
+7. Update `ProductCard.tsx` to obtain `addToCart` through the reactive store API.
+8. Update `CartDrawer.tsx` to subscribe to both collections and actions.
+9. Render separate “Cart” and “Saved for later” sections.
+10. Add a “Save for later” control beside each cart line and “Move to cart” plus “Remove” controls beside saved lines.
+11. Include empty states or omit empty sections consistently; keep native buttons and visible text for accessible interaction.
+12. Expand `tests/cartStore.test.ts` around state transitions and isolation. A separate component test should only be added if a DOM test dependency is intentionally introduced.
 
-2. Update `src/features/cart/CartDrawer.tsx`.
-   - Subscribe to cart and saved state rather than calling a non-reactive getter during render.
-   - Add a `Save for later` action beside each cart item.
-   - Render a distinct saved-items section.
-   - Add `Move to cart` and optionally `Remove` actions for saved items.
-   - Use explicit button labels containing product names for basic accessibility.
+The preferred scope is limited to:
 
-3. Update `src/features/catalog/ProductCard.tsx` only if the store API is converted to Zustand actions.
-   - Invoke the reactive store action instead of the current standalone mutator.
-   - No product-card visual changes are required.
+```text
+src/features/cart/cartStore.ts
+src/features/cart/CartDrawer.tsx
+src/features/catalog/ProductCard.tsx
+tests/cartStore.test.ts
+```
 
-4. Expand `tests/cartStore.test.ts`.
-   - Keep the existing add/remove coverage.
-   - Test saving removes the complete line from the cart and adds it to saved items.
-   - Test quantity preservation.
-   - Test moving back removes the saved entry.
-   - Test moving back merges with an independently re-added cart line.
-   - Test unknown IDs are no-ops.
-   - Test repeated operations do not create duplicates.
-   - Test clearing resets cart and saved state.
+No route, API, or persistence changes are necessary for an in-memory feature.
 
-A component test is desirable for button wiring and visible sections, but the repository has no DOM test environment or React Testing Library. Adding those dependencies solely for this feature should be a separate decision.
+**Tests**
+Add store tests for:
+
+- Saving removes an item from the cart and adds it to saved items.
+- Saved quantity and product fields are preserved.
+- Moving a saved item restores it to the cart.
+- Moving into an existing cart line merges quantities.
+- Removing a saved item does not affect active cart items.
+- Removing a cart item does not affect saved items.
+- Unknown product IDs are no-ops.
+- Repeated save/move operations do not create duplicate lines.
+- `clearCart` behavior is explicitly defined and tested.
+
+Recommended `clearCart` semantics: clear active and saved collections for deterministic test/reset behavior. If “clear cart” is user-facing later, separate it into `clearCartItems` and `resetStore`, because users may reasonably expect saved items to survive checkout or cart clearing.
+
+UI coverage would require adding a browser-like test environment and React testing utilities, neither of which currently exists. Without that dependency expansion, use the build/type-check as coverage for component integration and unit-test all transitions at store level.
 
 **Risks**
-- The current store cannot trigger React rerenders; retaining its mutation model would make the feature appear stale until an unrelated render.
-- State is memory-only, so saved items disappear on reload. Persistence should not be added without an explicit product requirement.
-- Save-for-later quantity behavior is unspecified. The plan assumes the complete cart line and quantity are preserved.
-- Products can be re-added while an equivalent item is saved; move-back semantics must explicitly merge quantities.
-- `Product` is declared in `ProductCard.tsx`, causing the state layer to depend on a component module. This could be moved to a domain type file later, but it is not required for the smallest feature change.
-- `vite.config.ts` is empty and the current application mounting setup appears incomplete, so build/runtime failures may predate this feature.
+- The current non-reactive store is the primary implementation risk; simply adding another array and buttons would produce stale UI.
+- The meaning of `clearCart` is ambiguous once saved items exist.
+- Behavior when adding a catalog product that is already saved must be defined. Recommended behavior is to add one active-cart unit while leaving the saved line unchanged; “Move to cart” remains the explicit operation that transfers saved quantity.
+- State is lost on refresh. Persistence should not be added without an explicit product requirement.
+- Refactoring exported store functions may affect unknown external consumers, although repository search found only the listed callers and test.
+- `Product` is declared in `ProductCard.tsx`, coupling store domain state to a UI module. It could move to a catalog model file, but that is optional scope expansion rather than necessary for this feature.
+- The repository lacks a normal Vite `index.html` and React mount call, so `npm run dev` may not produce a runnable page even though component and unit code can compile.
+- No lockfile means dependency versions using `latest` are not reproducible.
+- Existing lint/build configuration may have baseline issues: no ESLint configuration or React type packages were found.
 
-**Files Inspected**
+**Exact Files Inspected**
+- `AGENTS.md`
+- `README.md`
 - `package.json`
+- `tsconfig.json`
+- `vite.config.ts`
 - `src/main.tsx`
 - `src/App.tsx`
 - `src/routes.tsx`
+- `src/api/client.ts`
+- `src/components/Button.tsx`
+- `src/components/Header.tsx`
+- `src/styles/theme.css`
 - `src/features/cart/cartStore.ts`
 - `src/features/cart/CartDrawer.tsx`
 - `src/features/catalog/ProductCard.tsx`
-- `src/components/Button.tsx`
+- `src/features/catalog/ProductList.tsx`
 - `tests/cartStore.test.ts`
-- `vite.config.ts`
-- `tsconfig.json`
 
-**Files Recommended**
-- Modify: `src/features/cart/cartStore.ts`
-- Modify: `src/features/cart/CartDrawer.tsx`
-- Potentially modify: `src/features/catalog/ProductCard.tsx`
-- Modify: `tests/cartStore.test.ts`
-- No new file is necessary for the minimal implementation.
+Repository-wide focused searches also checked for cart callers, persistence APIs, Zustand usage, test environments, lockfiles, and additional tests.
 
 **Safety Exclusions**
-No excluded files were inspected. In particular, no `.env` files were read. Context Goblin also excluded:
-- `.env`, `.env.*`
-- `*.pem`, `*.key`
-- `secrets.json`, `credentials.json`
+- Did not read `.env`.
+- Did not inspect or alter secrets.
+- Did not modify any file.
+- Did not run Bash, package scripts, builds, tests, or lint.
+- Did not use task agents or subagents.
+- Did not plan backend, authentication, checkout, analytics, or persistence changes.
+- Did not include unrelated cleanup or dependency upgrades.
+```
+
+### Context Goblin
+
+- Duration: 82000ms
+- Tool calls: 11
+- context_goblin_get: yes
+- context_goblin_status: no
+- context_goblin_refresh: no
+- context_goblin_read: no
+- Input tokens: 8051
+- Output tokens: 1777
+- Reasoning tokens: 1612
+- Cache read tokens: 15616
+- Total event tokens: 27056
+- Cost: 0
+
+Tool counts:
+
+- context_goblin_get: 1
+- glob: 1
+- read: 9
+
+Files read:
+
+- AGENTS.md
+- package.json
+- src/components/Button.tsx
+- src/features/cart/CartDrawer.tsx
+- src/features/cart/cartStore.ts
+- src/features/catalog/ProductCard.tsx
+- src/routes.tsx
+- src/styles/theme.css
+- tests/cartStore.test.ts
+
+Errors:
+
+- none
+
+Final answer:
+
+```txt
+**Stack**
+- TypeScript, React, Vite, Node.js
+- State dependency available: Zustand
+- Tests: Vitest
+- Lint: ESLint
+- Package manager is not declared; no root lockfile was found. Commands below assume npm.
+
+**Commands**
+- Development: `npm run dev`
+- Build/type-check: `npm run build`
+- Tests once: `npm test -- --run`
+- Cart tests: `npm test -- --run tests/cartStore.test.ts`
+- Lint: `npm run lint`
+
+No commands were executed.
+
+**Entry Points**
+- Application: `src/main.tsx`
+- App shell: `src/App.tsx`
+- Route composition: `src/routes.tsx`
+- Cart UI: `src/features/cart/CartDrawer.tsx`
+- Cart state/actions: `src/features/cart/cartStore.ts`
+- Add-to-cart integration: `src/features/catalog/ProductCard.tsx`
+
+**Files Inspected**
+- `AGENTS.md`
+- `package.json`
+- `src/components/Button.tsx`
+- `src/features/cart/CartDrawer.tsx`
+- `src/features/cart/cartStore.ts`
+- `src/features/catalog/ProductCard.tsx`
+- `src/routes.tsx`
+- `src/styles/theme.css`
+- `tests/cartStore.test.ts`
+
+A focused lockfile glob found no root package-manager lockfile.
+
+**Recommended Files**
+- Modify `src/features/cart/cartStore.ts`
+- Modify `src/features/cart/CartDrawer.tsx`
+- Expand `tests/cartStore.test.ts`
+- Modify `src/features/catalog/ProductCard.tsx` only if the existing imperative `addToCart` API is replaced rather than preserved
+- Avoid adding new files unless saved-item presentation grows enough to justify a component
+
+**Implementation Plan**
+1. Convert the module-level mutable array in `cartStore.ts` into a reactive Zustand store. The current mutations do not trigger `CartDrawer` rerenders.
+2. Keep separate `items` and `savedItems` collections of `CartItem`, preserving quantity when an item moves between them.
+3. Add `saveForLater(productId)`, `moveToCart(productId)`, and `removeSavedItem(productId)` actions.
+4. Make moves atomic and immutable. Remove the source item and merge quantities when the destination already contains the same product ID.
+5. Keep `clearCart()` scoped to active cart items. Add a distinct saved-items clearing/reset mechanism so “saved for later” does not disappear when the cart is cleared.
+6. Preserve existing `addToCart`, `removeFromCart`, and getter exports as thin Zustand-backed functions if minimizing call-site changes is preferred.
+7. Update `CartDrawer` to subscribe to reactive selectors and render two semantic sections: “Cart” and “Saved for later.”
+8. Add “Save for later” beside each active item, plus “Move to cart” and “Remove” controls for saved items.
+9. Reuse `src/components/Button.tsx` where practical. No theme expansion is required for functional scope because the current design system contains no substantive button styling.
+10. Run targeted tests, then the full test, build, and lint commands.
+
+**Tests**
+Add store tests covering:
+
+- Saving removes an item from the active cart and adds it to saved items.
+- Quantity is preserved when saving.
+- Moving a saved item back restores it to the cart.
+- Moving into an existing cart entry merges quantities.
+- Saving into an existing saved entry merges quantities.
+- Removing a saved item does not affect active cart items.
+- Unknown product IDs are harmless no-ops.
+- `clearCart()` leaves saved items intact.
+- Test setup clears both collections to prevent state leakage.
+- Existing add/remove behavior remains valid.
+
+A component interaction test would require adding React DOM test tooling not currently declared. Store-level Vitest coverage is the minimal appropriate test scope.
+
+**Risks**
+- Persistence is absent. Saved items will be lost on refresh unless local storage or an API is explicitly added.
+- “Save for later” quantity semantics need product confirmation; this plan moves the entire line item rather than one unit.
+- The current store imports `Product` from a UI component. It works as a type-only import, but shared catalog models should eventually live outside `ProductCard.tsx`.
+- Zustand is installed but currently unused, so the conversion affects the cart’s state architecture.
+- Dependencies use `latest` versions and there is no root lockfile, making reproducible verification less reliable.
+- Accessibility labels and empty-state text should distinguish cart removal, saving, and saved-item removal.
+
+**Safety Exclusions**
+Not read or recommended for inspection:
+
+- `.env`
+- `.env.*`
+- `*.pem`
+- `*.key`
+- `secrets.json`
+- `credentials.json`
 - `node_modules/**`
 - `.git/**`
-- `dist/**`, `build/**`, `coverage/**`
-- `.next/**`, `.nuxt/**`, `.output/**`
+- `dist/**`
+- `build/**`
+- `coverage/**`
+- `.next/**`
+- `.nuxt/**`
+- `.output/**`
 - `.opencode/cache/context-goblin/**`
 
 No files were modified.

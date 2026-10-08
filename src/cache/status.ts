@@ -1,7 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { CACHE_MARKDOWN, CACHE_STATE } from "../constants.js"
+import { CACHE_MARKDOWN, CACHE_STATE, CACHE_VERSION } from "../constants.js"
 import { hashProjectState } from "../project/hashProjectState.js"
 import type { CacheStatus, ProjectState } from "./types.js"
 
@@ -33,6 +33,9 @@ export async function cacheStatus(rootDir: string): Promise<CacheStatus> {
 
   try {
     const state = JSON.parse(await fs.readFile(statePath, "utf8")) as ProjectState
+    if (state.version !== CACHE_VERSION) {
+      return { exists: true, stale: true, reason: "cache format changed", cachePath, statePath, projectHash: projectHash.hash, state }
+    }
     const stale = state.projectHash !== projectHash.hash
     return {
       exists: true,

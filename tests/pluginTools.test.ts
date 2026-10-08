@@ -24,6 +24,7 @@ describe("Context Goblin low-overhead context tool", () => {
     const refreshed = await getFreshProjectContext(root)
 
     expect(refreshed).not.toBe(initial)
-    expect(refreshed).toContain("Prefer the new single-call Context Goblin flow.")
+    expect(refreshed).toContain("AGENTS.md exists")
+    expect(refreshed).not.toContain("Prefer the new single-call Context Goblin flow.")
   })
 })

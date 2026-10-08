@@ -1,6 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
+import { readTextIfAllowed } from "../context/fileAccess.js"
 import type { DetectedStack } from "./types.js"
 
 async function exists(filePath: string): Promise<boolean> {
@@ -12,17 +13,17 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function readJson(filePath: string): Promise<Record<string, unknown>> {
+async function readJson(rootDir: string, relativePath: string): Promise<Record<string, unknown>> {
   try {
-    return JSON.parse(await fs.readFile(filePath, "utf8")) as Record<string, unknown>
+    const text = await readTextIfAllowed(rootDir, relativePath)
+    return text ? JSON.parse(text) as Record<string, unknown> : {}
   } catch {
     return {}
   }
 }
 
 export async function detectStack(rootDir: string): Promise<DetectedStack> {
-  const packageJsonPath = path.join(rootDir, "package.json")
-  const packageJson = await readJson(packageJsonPath)
+  const packageJson = await readJson(rootDir, "package.json")
   const dependencies = {
     ...((packageJson.dependencies as Record<string, string> | undefined) ?? {}),
     ...((packageJson.devDependencies as Record<string, string> | undefined) ?? {}),

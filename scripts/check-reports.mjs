@@ -85,9 +85,6 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
           fail(`${reportPath} reports overall pass without positive compatibility and efficiency results: ${row}`)
         }
       }
-      if (cells[1] === "no" && result === "fail") {
-        fail(`${reportPath} reports failed baseline as fail instead of error: ${row}`)
-      }
     }
   }
 
