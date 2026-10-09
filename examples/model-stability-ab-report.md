@@ -1,8 +1,9 @@
 # Context Goblin Repeated Stability A/B Report
 
-Generated: 2026-09-04
+Status updated: 2026-10-09 (no new stability run)
 OpenCode version: 1.18.20
-Context Goblin version: 0.1.21
+Context Goblin version: 0.1.23
+Historical attempted run: Context Goblin 0.1.21, 2026-09-04
 Protocol: repeated agentic A/B with cold-refresh and warm-cache controls
 
 ## Status
@@ -15,13 +16,15 @@ measurements. No stability claim is made from them.
 
 ## Valid evidence already available
 
-- Live smoke passed on `openai/gpt-5.5` and `openai/gpt-5.6-sol` with the legacy
-  `status → refresh → read → stats` sequence. The single-call `context_goblin_get`
-  flow also passed a live smoke on `gpt-5.6-sol`.
-- Single-call one-shot A/B passed on both models with answer quality `6/6` and no
-  secret leakage. File-read reductions were 44% (`gpt-5.5`) and 35% (`gpt-5.6-sol`).
-- Input-token reductions were 28% and 45%; total-event-token reductions were 47%
-  and 35%, respectively.
+The latest completed one-shot comparison used Context Goblin `0.1.22` on
+2026-10-08. Both models passed compatibility and efficiency checks, with answer
+coverage `6/6` and no detected secret leakage. Coverage is not proof of semantic
+correctness, and one-shot results do not establish repeatable savings.
+
+See the [current token report](./token-usage-ab-report.md) and
+[previous run history](./ab-run-history.md) for measurements and variability.
+The `0.1.23` release updates documentation and package version only; it does not
+represent a new model or stability benchmark.
 
 ## Reproduction
 
