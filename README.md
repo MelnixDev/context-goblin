@@ -31,7 +31,7 @@ Use this server configuration on OpenCode 2:
 
 ```json
 {
-  "plugins": ["context-goblin@0.2.0"]
+  "plugins": ["context-goblin@0.2.1"]
 }
 ```
 
