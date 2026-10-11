@@ -114,18 +114,29 @@ The filters cannot identify every secret in filenames, import paths, or source i
 
 ## Verified behavior and measured results
 
-OpenCode **2.0.26** passed a packed-package integration check: the plugin loads, both server commands register, and all six tools execute without model calls. OpenCode **1.18.20** passed the registration smoke. The full test suite contains **90 passing tests**. Real V2 model sessions and interactive TUI behavior remain unverified.
+OpenCode **2.0.26** passed a packed-package integration check: the plugin loads, both server commands register, and all six tools execute without model calls. OpenCode **1.18.20** passed the registration smoke. The full test suite contains **98 passing tests**. Interactive TUI behavior remains unverified.
 
-The latest completed A/B comparison used **Context Goblin 0.1.22** with **OpenCode 1.18.20** on **2026-10-08**:
+The latest A/B comparison used **Context Goblin 0.2.2**, **OpenCode 2.0.26**, and reasoning variant **low** on **2026-10-11**:
+
+| Model | File reads: baseline → Goblin | Uncached input reduction | Total event token reduction | Answer-topic coverage |
+| --- | ---: | ---: | ---: | ---: |
+| GPT 6 Sol | 12 → 7 | 18% | 33% | 6/6 |
+| GPT 6.1 Sol | 16 → 6 | 27% | 48% | 6/6 |
+
+All four sessions completed. Goblin called `context_goblin_get` before discovery; tool-flow, cache-size, and secret-leakage checks passed. File reads count distinct files accessed through `read`. Topic coverage checks six requested answer topics; it does not prove semantic correctness.
+
+Each arm ran once with a cold Goblin cache. Provider caching was uncontrolled, and the GPT 6 pair had a roughly five-hour gap after a quota interruption. These measurements do not establish repeatable savings or billing reductions. See [the V2 report and answers](https://github.com/MelnixDev/context-goblin/blob/main/examples/opencode-v2-ab-report.md).
+
+### Historical OpenCode 1 comparison
+
+Tested **2026-10-08** with **Context Goblin 0.1.22** and **OpenCode 1.18.20**:
 
 | Model | File reads: baseline → Goblin | Uncached input reduction | Total event token reduction | Answer-topic coverage |
 | --- | ---: | ---: | ---: | ---: |
 | GPT-5.5 | 16 → 6 | 25% | 27% | 6/6 |
 | GPT-5.6 Sol | 17 → 11 | 19% | 31% | 6/6 |
 
-Both arms completed, tool-flow and cache-size checks passed, and no secret leakage was detected. File reads count distinct files accessed through the built-in `read` tool. Topic coverage checks six requested answer topics; it does not prove semantic correctness.
-
-These are single runs per model and arm. An earlier run on the same version increased GPT-5.5 uncached input by 28%. Repeated stability testing is deferred after sessions stalled before their first event, so repeatable savings and V2 performance are not established.
+These were also single runs per model and arm. An earlier run on the same version increased GPT-5.5 uncached input by 28%. Repeated stability testing remains deferred after sessions stalled before their first event.
 
 Detailed evidence: [token usage](https://github.com/MelnixDev/context-goblin/blob/main/examples/token-usage-ab-report.md), [answer and compatibility checks](https://github.com/MelnixDev/context-goblin/blob/main/examples/model-general-ab-report.md), [run history](https://github.com/MelnixDev/context-goblin/blob/main/examples/ab-run-history.md), and [stability status](https://github.com/MelnixDev/context-goblin/blob/main/examples/model-stability-ab-report.md).
 

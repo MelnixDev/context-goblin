@@ -30,6 +30,7 @@
     "smoke:opencode:live": "bash scripts/smoke-opencode-live.sh",
     "check:models:general": "bash scripts/model-ab.sh",
     "check:tokens": "TOKEN_REPORT=1 bash scripts/model-ab.sh",
+    "check:tokens:v2": "npm run build && node scripts/model-ab-v2.mjs",
     "benchmark:stable": "npm run build && node scripts/model-ab-stable.mjs",
     "check:reports": "node scripts/check-reports.mjs",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run smoke:opencode && npm run smoke:opencode:v2 && npm run check:reports"

@@ -41,6 +41,26 @@ The V2 smoke installs the packed package into an isolated temporary workspace an
 
 ## Model comparisons
 
+### OpenCode 2: GPT 6 and GPT 6.1
+
+```bash
+npm run check:tokens:v2
+```
+
+Defaults: OpenCode 2.0.26, `openai/gpt-6-sol` and `openai/gpt-6.1-sol`, variant `low`, one baseline and one cold-cache Goblin session per model. Both arms use the same synthetic shop fixture, task, and permissions. Each session is limited to 12 steps and 180 seconds. Override `OPENCODE_MODELS`, `OPENCODE_VARIANT`, `OPENCODE_V2_BIN`, or `OPENCODE_TIMEOUT_MS` when needed.
+
+A read-only observer captures native tool completions and `session.step.ended` events without editing prompts or tools. Counters are deduplicated; missing token data and failed arms stop the run and preserve any completed report. A six-topic answer checklist measures coverage, while the report includes the answers for correctness review.
+
+Raw evidence stays under ignored `benchmark-results/v2-*` directories. The report is written to `examples/opencode-v2-ab-report.md` only after every arm completes. To resume a specific run:
+
+```bash
+AB_V2_RESUME=benchmark-results/v2-TL4nkL npm run check:tokens:v2
+```
+
+Resume verifies package and CLI versions, models, variant, fixture, prompts, and measurement code. It revalidates completed arms against their raw evidence and executes only unfinished arms in fresh fixtures. A recorded quota reset blocks requests until the specified time. Provider cache state may change during a break, so resumed comparisons remain one-shot evidence.
+
+### OpenCode 1: historical protocol
+
 These runners target OpenCode 1.18.20. They are not V2 benchmarks.
 
 ```bash
