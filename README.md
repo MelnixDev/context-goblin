@@ -6,7 +6,7 @@ Useful for OpenCode plugin workflows, AI coding agents, repository context cachi
 
 ## Install
 
-Version `0.1.24` adds an initial OpenCode V2 adapter while retaining V1 support.
+Version `0.2.0` adds an initial OpenCode V2 adapter while retaining V1 support.
 Use the V1 configuration below, or the V2 configuration in the next section.
 
 ```json
@@ -25,13 +25,24 @@ passes. V2 hooks, usage handling and TUI registration have unit coverage, but a
 real V2 model session and interactive TUI session have not been validated yet.
 Existing A/B token results below remain V1 evidence, not V2 performance claims.
 
-For the published package on V2:
+Once `0.2.0` is published, use this server configuration on V2:
 
 ```json
 {
-  "plugins": ["context-goblin@0.1.24"]
+  "plugins": ["context-goblin@0.2.0"]
 }
 ```
+
+To enable the optional V2 TUI command, add the same `plugins` entry to
+`~/.config/opencode/cli.json` (or its JSONC equivalent). Server and CLI plugin
+configuration are separate. The TUI stats command reads the selected session's
+location, not the directory where the UI started; an unavailable session produces
+a warning instead of inspecting another project's cache. It reads the local
+filesystem, so remote-server workspaces are not validated or supported by this
+optional TUI command; use the server stats tool for those.
+
+Do not combine a configured plugin entry with an auto-discovered shim for the
+same plugin: OpenCode V2 rejects duplicate plugin IDs. Choose one loading method.
 
 For local V2 testing after `npm install` and `npm run build`, configure the compiled
 plugin directory (the `2.0.26` configured-local loader requires a directory):
@@ -59,7 +70,7 @@ model tokens. V1 scripts use the explicit V1 CLI path so installing the V2 CLI
 cannot silently change the old benchmark protocol. The V2 SDK is type-only and a
 development dependency; its runtime is not imported by the published artifact.
 
-For local development, build and add a shim:
+For V1 local development, build and add a shim (instead of a package entry):
 
 ```js
 export { default } from "file:///absolute/path/to/context-goblin/dist/src/index.js"
@@ -96,7 +107,7 @@ OpenCode slash commands:
 /context-goblin-usage
 ```
 
-The slash commands are registered by the server plugin through OpenCode's native command config. `/context-goblin-stats` expands to a prompt that calls `context_goblin_status`, then `context_goblin_stats`, and reports cache freshness, size, tracked files, and code-map coverage. `/context-goblin-usage` calls `context_goblin_usage_stats` and summarizes local token usage rollups. Restart OpenCode after changing plugin config.
+The server slash commands use native V1 command config or V2 command transforms. `/context-goblin-stats` submits a prompt that calls `context_goblin_status`, then `context_goblin_stats`, and reports cache freshness, size, tracked files, and code-map coverage. `/context-goblin-usage` calls `context_goblin_usage_stats` and summarizes local token usage rollups. V2 preserves the invocation's delivery mode and attachments. When the optional TUI plugin is enabled, its stats slash command shows a local toast without a model call instead. Restart OpenCode after changing plugin config.
 
 Cache files:
 

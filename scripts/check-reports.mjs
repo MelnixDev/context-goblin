@@ -26,6 +26,13 @@ function isCurrentOrPreviousPatch(reportVersion, packageVersion) {
   return report[0] === current[0] && report[1] === current[1] && current[2] - report[2] >= 0 && current[2] - report[2] <= 1
 }
 
+function isNotFuture(recorded, current) {
+  for (let index = 0; index < 3; index++) {
+    if (recorded[index] !== current[index]) return recorded[index] < current[index]
+  }
+  return true
+}
+
 function markdownFiles(dir) {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir)
@@ -53,11 +60,10 @@ if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const historical = text.includes("Evidence status: Historical evidence — not a benchmark of the current release.")
   const recorded = parseVersion(versionMatch?.[1] || "")
   const current = parseVersion(packageJson.version)
-  const historicalVersionValid = historical && recorded && current &&
-    recorded[0] === current[0] && recorded[1] === current[1] && recorded[2] <= current[2]
+  const historicalVersionValid = historical && recorded && current && isNotFuture(recorded, current)
   if (!versionMatch) fail(`${reportPath} is missing Context Goblin version`)
   else if (!isCurrentOrPreviousPatch(versionMatch[1], packageJson.version) && !historicalVersionValid) {
-    fail(`${reportPath} version ${versionMatch[1]} must match package.json ${packageJson.version} or its immediately previous patch`)
+    fail(`${reportPath} version ${versionMatch[1]} must match package.json ${packageJson.version}, its immediately previous patch, or be explicitly labelled non-future historical evidence`)
   }
 
   const stabilityDeferred = reportPath.includes("stability") && /Deferred — the repeated agentic run is not a valid performance result yet/i.test(text)

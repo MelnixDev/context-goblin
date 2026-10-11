@@ -3,6 +3,7 @@
 Status updated: 2026-10-09 (no new stability run)
 OpenCode version: 1.18.20
 Context Goblin version: 0.1.23
+Evidence status: Historical evidence — not a benchmark of the current release.
 Historical attempted run: Context Goblin 0.1.21, 2026-09-04
 Protocol: repeated agentic A/B with cold-refresh and warm-cache controls
 

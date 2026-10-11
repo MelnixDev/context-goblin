@@ -80,8 +80,10 @@ describe("OpenCode V2 adapter", () => {
   it("submits command templates with the native delivery mode", async () => {
     const fake = context(await copyFixture("react-vite"))
     const cleanup = await serverPlugin.setup(fake.ctx as never)
-    await fake.commands[0].execute({ sessionID: "session", delivery: "queue" })
-    expect(fake.prompt).toHaveBeenCalledWith(expect.objectContaining({ sessionID: "session", delivery: "queue", text: expect.stringContaining("context_goblin_stats") }))
+    const files = [{ uri: "file:///workspace/example.ts" }]
+    const agents = [{ name: "reviewer" }]
+    await fake.commands[0].execute({ sessionID: "session", delivery: "queue", prompt: { text: "old", files, agents } })
+    expect(fake.prompt).toHaveBeenCalledWith(expect.objectContaining({ sessionID: "session", delivery: "queue", files, agents, text: expect.stringContaining("context_goblin_stats") }))
     await cleanup?.()
   })
 
@@ -135,13 +137,69 @@ describe("OpenCode V2 adapter", () => {
     await expect(stop?.()).resolves.toBeUndefined()
   })
 
+  it("aborts a live event subscription and awaits its termination on unload", async () => {
+    const fake = context(await copyFixture("react-vite"))
+    let ended = false
+    fake.ctx.event.subscribe = ({ signal }) => (async function* () {
+      try {
+        await new Promise<void>((resolve) => {
+          if (signal.aborted) resolve()
+          else signal.addEventListener("abort", () => resolve(), { once: true })
+        })
+      } finally { ended = true }
+    })()
+    const stop = await serverPlugin.setup(fake.ctx as never)
+    expect(ended).toBe(false)
+    await stop?.()
+    expect(ended).toBe(true)
+  })
+
   it("registers a V2 TUI layer and shows stats through native toast API", async () => {
     const root = await copyFixture("react-vite")
     let layer: any
     const show = vi.fn()
-    await tuiPlugin.setup({ location: { directory: root }, keymap: { layer: (factory: any) => { layer = factory() } }, ui: { toast: { show } } } as never)
+    await tuiPlugin.setup({ location: { directory: root }, keymap: { layer: (factory: any) => { layer = factory() } }, ui: { router: { current: () => ({ type: "home" }) }, toast: { show } } } as never)
     expect(layer.commands[0].id).toBe("context-goblin.stats")
     await layer.commands[0].run()
     expect(show).toHaveBeenCalledWith(expect.objectContaining({ title: "Context Goblin Stats" }))
+  })
+
+  it("shows the selected session's stats rather than the TUI boot location", async () => {
+    const root = await copyFixture("react-vite")
+    const other = await copyFixture("node-basic")
+    const fake = context(other)
+    const stop = await serverPlugin.setup(fake.ctx as never)
+    await fake.tools[0].execute({}, { sessionID: "session", signal: new AbortController().signal })
+    await stop?.()
+    let layer: any
+    const show = vi.fn()
+    const get = vi.fn(() => ({ location: { directory: other } }))
+    await tuiPlugin.setup({ location: { directory: root }, data: { session: { get } },
+      keymap: { layer: (factory: any) => { layer = factory() } },
+      ui: { router: { current: () => ({ type: "session", sessionID: "other" }) }, toast: { show } } } as never)
+    await layer.commands[0].run()
+    expect(get).toHaveBeenCalledWith("other")
+    expect(show).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }))
+  })
+
+  it("fails closed when the selected TUI session is unavailable", async () => {
+    let layer: any
+    const show = vi.fn()
+    await tuiPlugin.setup({ location: { directory: "/must-not-be-read" },
+      data: { session: { get: () => undefined } },
+      keymap: { layer: (factory: any) => { layer = factory() } },
+      ui: { router: { current: () => ({ type: "session", sessionID: "missing" }) }, toast: { show } } } as never)
+    await expect(layer.commands[0].run()).resolves.toBeUndefined()
+    expect(show).toHaveBeenCalledWith(expect.objectContaining({ variant: "warning", message: expect.stringContaining("No cache was inspected") }))
+  })
+
+  it("contains TUI cache/location failures without leaking error details", async () => {
+    let layer: any
+    const show = vi.fn()
+    await tuiPlugin.setup({ data: { session: { get: () => { throw new Error("sensitive detail") } } },
+      keymap: { layer: (factory: any) => { layer = factory() } },
+      ui: { router: { current: () => ({ type: "session", sessionID: "bad" }) }, toast: { show } } } as never)
+    await expect(layer.commands[0].run()).resolves.toBeUndefined()
+    expect(show).toHaveBeenCalledWith(expect.objectContaining({ variant: "error", message: expect.not.stringContaining("sensitive") }))
   })
 })

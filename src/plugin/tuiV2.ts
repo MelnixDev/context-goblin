@@ -13,13 +13,28 @@ export const setupTuiV2 = ((input: unknown) => {
       group: "Context Goblin", palette: true,
       slash: { name: "context-goblin-stats", aliases: ["cg-stats"] },
       async run() {
-        const location = ctx.location ?? ctx.data.location.default()
-        if (!location) return
-        const status = await cacheStatus(location.directory)
-        ctx.ui.toast.show({
-          variant: status.exists && !status.stale ? "success" : "warning",
-          title: "Context Goblin Stats", message: formatCacheStatsSummary(status), duration: 8000,
-        })
+        try {
+          const route = ctx.ui.router.current()
+          // A global layer can run in a session belonging to another location.
+          // Never show boot-directory stats as if they belonged to that session.
+          const location = route.type === "session"
+            ? ctx.data.session.get(route.sessionID)?.location
+            : ctx.location ?? ctx.data.location.default()
+          if (!location?.directory) {
+            ctx.ui.toast.show({ variant: "warning", title: "Context Goblin Stats",
+              message: "The current session location is unavailable. No cache was inspected." })
+            return
+          }
+          const status = await cacheStatus(location.directory)
+          ctx.ui.toast.show({
+            variant: status.exists && !status.stale ? "success" : "warning",
+            title: "Context Goblin Stats", message: formatCacheStatsSummary(status), duration: 8000,
+          })
+        } catch {
+          // Filesystem/cache failures must not escape a native UI command.
+          ctx.ui.toast.show({ variant: "error", title: "Context Goblin Stats",
+            message: "Could not read cache statistics for the current location." })
+        }
       },
     }],
   }))
