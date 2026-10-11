@@ -6,8 +6,8 @@ Useful for OpenCode plugin workflows, AI coding agents, repository context cachi
 
 ## Install
 
-The published npm `0.1.23` release targets OpenCode V1. The unreleased working tree
-adds a dual V1/V2 adapter; do not assume the published package already supports V2.
+Version `0.1.24` adds an initial OpenCode V2 adapter while retaining V1 support.
+Use the V1 configuration below, or the V2 configuration in the next section.
 
 ```json
 {
@@ -16,14 +16,22 @@ adds a dual V1/V2 adapter; do not assume the published package already supports 
 }
 ```
 
-### OpenCode 2 preparation (unreleased)
+### OpenCode 2 support (initial)
 
-The working tree has been checked against OpenCode `2.0.26` using a packed-package
+The adapter has been checked against OpenCode `2.0.26` using a packed-package
 integration smoke: the server plugin becomes active, both slash commands register,
 and all six tools execute without model calls. V1 `1.18.20` registration smoke also
 passes. V2 hooks, usage handling and TUI registration have unit coverage, but a
 real V2 model session and interactive TUI session have not been validated yet.
 Existing A/B token results below remain V1 evidence, not V2 performance claims.
+
+For the published package on V2:
+
+```json
+{
+  "plugins": ["context-goblin@0.1.24"]
+}
+```
 
 For local V2 testing after `npm install` and `npm run build`, configure the compiled
 plugin directory (the `2.0.26` configured-local loader requires a directory):

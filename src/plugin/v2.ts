@@ -8,7 +8,8 @@ import { createContextGoblinTools } from "./tools.js"
 
 // Type-only SDK import: V2 definitions are plain objects, so the V2 SDK does not
 // become a runtime dependency for users who still run OpenCode V1.
-export const setupV2: Plugin.Plugin["setup"] = async (ctx) => {
+export const setupV2 = (async (input: unknown) => {
+  const ctx = input as Plugin.Context
   const options = resolvePluginOptions(ctx.options)
   const tools = createContextGoblinTools()
   await ctx.tool.transform((editor) => {
@@ -96,4 +97,4 @@ export const setupV2: Plugin.Plugin["setup"] = async (ctx) => {
     }
   })()
   return async () => { controller.abort(); await subscription }
-}
+}) satisfies Plugin.Plugin["setup"]

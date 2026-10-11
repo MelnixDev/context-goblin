@@ -50,8 +50,13 @@ for (const reportPath of ["examples/model-general-ab-report.md", "examples/token
 if (fs.existsSync(path.join(repoRoot, reportPath))) {
   const text = read(reportPath)
   const versionMatch = text.match(/^Context Goblin version: (.+)$/m)
+  const historical = text.includes("Evidence status: Historical evidence — not a benchmark of the current release.")
+  const recorded = parseVersion(versionMatch?.[1] || "")
+  const current = parseVersion(packageJson.version)
+  const historicalVersionValid = historical && recorded && current &&
+    recorded[0] === current[0] && recorded[1] === current[1] && recorded[2] <= current[2]
   if (!versionMatch) fail(`${reportPath} is missing Context Goblin version`)
-  else if (!isCurrentOrPreviousPatch(versionMatch[1], packageJson.version)) {
+  else if (!isCurrentOrPreviousPatch(versionMatch[1], packageJson.version) && !historicalVersionValid) {
     fail(`${reportPath} version ${versionMatch[1]} must match package.json ${packageJson.version} or its immediately previous patch`)
   }
 

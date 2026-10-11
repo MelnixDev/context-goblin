@@ -3,6 +3,7 @@
 Generated: 2026-10-08T13:13:55.832Z
 OpenCode version: 1.18.20
 Context Goblin version: 0.1.22
+Evidence status: Historical evidence — not a benchmark of the current release.
 Model group: custom
 
 ## Task

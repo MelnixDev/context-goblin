@@ -3,7 +3,8 @@ import type { Plugin } from "@opencode/plugin/tui"
 import { cacheStatus } from "../cache/status.js"
 import { formatCacheStatsSummary } from "../tui/statsSummary.js"
 
-export const setupTuiV2: Plugin.Definition["setup"] = (ctx) => {
+export const setupTuiV2 = ((input: unknown) => {
+  const ctx = input as Plugin.Context
   ctx.keymap.layer(() => ({
     mode: "global",
     commands: [{
@@ -22,4 +23,4 @@ export const setupTuiV2: Plugin.Definition["setup"] = (ctx) => {
       },
     }],
   }))
-}
+}) satisfies Plugin.Definition["setup"]
