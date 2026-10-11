@@ -26,12 +26,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:opencode": "bash scripts/smoke-opencode.sh",
+    "smoke:opencode:v2": "npm run build && node scripts/smoke-opencode-v2.mjs",
     "smoke:opencode:live": "bash scripts/smoke-opencode-live.sh",
     "check:models:general": "bash scripts/model-ab.sh",
     "check:tokens": "TOKEN_REPORT=1 bash scripts/model-ab.sh",
     "benchmark:stable": "npm run build && node scripts/model-ab-stable.mjs",
     "check:reports": "node scripts/check-reports.mjs",
-    "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run smoke:opencode && npm run check:reports"
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build && npm run smoke:opencode && npm run smoke:opencode:v2 && npm run check:reports"
   },
   "keywords": [
     "opencode",
@@ -47,9 +48,11 @@
   "author": "Volodymyr Melnychuk",
   "license": "MIT",
   "dependencies": {
-    "@opencode-ai/plugin": "^1.18.20"
+    "@opencode-ai/plugin": "1.18.20"
   },
   "devDependencies": {
+    "@opencode/cli": "2.0.26",
+    "@opencode/plugin": "2.0.26",
     "@types/node": "26.1.0",
     "opencode-ai": "1.18.20",
     "tsx": "4.23.0",

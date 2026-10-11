@@ -7,7 +7,7 @@ import { generateProjectContext } from "../dist/src/index.js"
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"))
-const opencodeBin = process.env.OPENCODE_BIN || path.join(repoRoot, "node_modules/.bin/opencode")
+const opencodeBin = process.env.OPENCODE_BIN || path.join(repoRoot, "node_modules/opencode-ai/bin/opencode.exe")
 const models = (process.env.OPENCODE_MODELS || "openai/gpt-5.5 openai/gpt-5.6-sol").trim().split(/\s+/)
 const runs = Number(process.env.STABILITY_RUNS || 5)
 const coldRuns = Number(process.env.STABILITY_COLD_RUNS || 1)

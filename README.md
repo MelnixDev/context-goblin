@@ -6,7 +6,8 @@ Useful for OpenCode plugin workflows, AI coding agents, repository context cachi
 
 ## Install
 
-The npm `latest` release is the supported version.
+The published npm `0.1.23` release targets OpenCode V1. The unreleased working tree
+adds a dual V1/V2 adapter; do not assume the published package already supports V2.
 
 ```json
 {
@@ -14,6 +15,41 @@ The npm `latest` release is the supported version.
   "plugin": ["context-goblin"]
 }
 ```
+
+### OpenCode 2 preparation (unreleased)
+
+The working tree has been checked against OpenCode `2.0.26` using a packed-package
+integration smoke: the server plugin becomes active, both slash commands register,
+and all six tools execute without model calls. V1 `1.18.20` registration smoke also
+passes. V2 hooks, usage handling and TUI registration have unit coverage, but a
+real V2 model session and interactive TUI session have not been validated yet.
+Existing A/B token results below remain V1 evidence, not V2 performance claims.
+
+For local V2 testing after `npm install` and `npm run build`, configure the compiled
+plugin directory (the `2.0.26` configured-local loader requires a directory):
+
+```json
+{
+  "plugins": ["/absolute/path/to/context-goblin/dist/src"]
+}
+```
+
+The V2 adapter uses `setup`, native tool/command transforms, JSON Schema inputs,
+structured text results, and an abortable event subscription. Tool filesystem
+operations resolve the actual session directory rather than the service boot
+directory. Output compaction remains opt-in; V2 `shell` maps to the existing
+`bash` compaction setting, and non-text/failed results are left untouched.
+
+V2 usage records completed `session.step.ended` events, not cumulative
+`session.usage.updated` events. It remains best-effort, step-only telemetry, not a
+billing total; auxiliary requests are not included. A bounded in-memory event-ID
+window suppresses duplicate deliveries within one plugin lifetime, not across
+reloads. The subscription is aborted and awaited on unload.
+
+Run `npm run smoke:opencode:v2` to verify the packed server plugin without spending
+model tokens. V1 scripts use the explicit V1 CLI path so installing the V2 CLI
+cannot silently change the old benchmark protocol. The V2 SDK is type-only and a
+development dependency; its runtime is not imported by the published artifact.
 
 For local development, build and add a shim:
 

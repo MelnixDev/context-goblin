@@ -30,7 +30,9 @@ describe("package exports", () => {
   })
 
   it("uses explicit OpenCode module entrypoints", () => {
-    expect(serverPlugin).toEqual({ id: "context-goblin", server: ContextGoblin })
-    expect(tuiPlugin).toEqual({ id: "context-goblin", tui })
+    expect(serverPlugin).toMatchObject({ id: "context-goblin", server: ContextGoblin })
+    expect(serverPlugin.setup).toBeTypeOf("function")
+    expect(tuiPlugin).toMatchObject({ id: "context-goblin", tui })
+    expect(tuiPlugin.setup).toBeTypeOf("function")
   })
 })

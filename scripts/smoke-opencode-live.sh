@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-opencode_bin="${OPENCODE_BIN:-$repo_root/node_modules/.bin/opencode}"
+opencode_bin="${OPENCODE_BIN:-$repo_root/node_modules/opencode-ai/bin/opencode.exe}"
 model="${OPENCODE_MODEL:-openai/gpt-5.5}"
 
 if [ ! -x "$opencode_bin" ]; then

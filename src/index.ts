@@ -1,6 +1,7 @@
 import type { PluginModule } from "@opencode-ai/plugin"
 
 import { ContextGoblin } from "./plugin/server.js"
+import { setupV2 } from "./plugin/v2.js"
 
 export { cacheStatus } from "./cacheStatus.js"
 export { ContextGoblin } from "./plugin/server.js"
@@ -17,4 +18,5 @@ export { formatCacheStatsSummary } from "./tuiStats.js"
 export default {
   id: "context-goblin",
   server: ContextGoblin,
-} satisfies PluginModule
+  setup: setupV2,
+} satisfies PluginModule & { setup: typeof setupV2 }
