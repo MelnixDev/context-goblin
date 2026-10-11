@@ -29,6 +29,6 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - run: npm install --prefix "$RUNNER_TEMP/npm-cli" npm@12.0.2
-      - run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" config set allow-scripts=opencode-ai,esbuild,msgpackr-extract --location=project
+      - run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" config set allow-scripts=@opencode/cli,opencode-ai,esbuild,msgpackr-extract --location=project
       - run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" ci
       - run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" publish --loglevel verbose
