@@ -16,7 +16,7 @@ In `opencode.json` or `opencode.jsonc`:
 
 ```json
 {
-  "plugins": ["context-goblin@0.2.2"]
+  "plugins": ["context-goblin@0.2.3"]
 }
 ```
 
@@ -26,7 +26,7 @@ For optional TUI stats, add the same entry to `~/.config/opencode/cli.json` or `
 
 ```json
 {
-  "plugin": ["context-goblin@0.2.2"]
+  "plugin": ["context-goblin@0.2.3"]
 }
 ```
 
@@ -88,7 +88,7 @@ OpenCode 2 configuration:
 ```json
 {
   "plugins": [{
-    "package": "context-goblin@0.2.2",
+    "package": "context-goblin@0.2.3",
     "options": {
       "compactToolOutputs": true
     }
@@ -96,7 +96,7 @@ OpenCode 2 configuration:
 }
 ```
 
-For OpenCode 1, use `"plugin": [["context-goblin@0.2.2", { "compactToolOutputs": true }]]`.
+For OpenCode 1, use `"plugin": [["context-goblin@0.2.3", { "compactToolOutputs": true }]]`.
 
 Additional options: `compactToolOutputThresholdChars`, `compactToolOutputKeepStartChars`, `compactToolOutputKeepEndChars`, and `compactToolOutputTools`.
 
