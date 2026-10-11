@@ -1,8 +1,10 @@
 # Context Goblin
 
-OpenCode plugin for AI coding agents that creates a compact project-context cache and code map. Context Goblin helps OpenCode agents reduce repository rediscovery, lower file reads, and reuse project facts while excluding common sensitive paths.
+Context Goblin gives OpenCode agents a compact, reusable overview of your repository: its stack, project structure, available scripts, and source code map.
 
-Useful for OpenCode plugin workflows, AI coding agents, repository context caching, token usage evidence, safe project summaries, and code-map based project understanding.
+The agent can retrieve this context in one tool call, then inspect the files relevant to its task. The cache refreshes when the project changes and excludes known sensitive paths.
+
+Supports OpenCode 1 and 2. Optional features include tool output compaction, local token usage statistics, and terminal UI cache stats.
 
 ## Install
 
@@ -25,7 +27,7 @@ passes. V2 hooks, usage handling and TUI registration have unit coverage, but a
 real V2 model session and interactive TUI session have not been validated yet.
 Existing A/B token results below remain V1 evidence, not V2 performance claims.
 
-Once `0.2.0` is published, use this server configuration on V2:
+Use this server configuration on OpenCode 2:
 
 ```json
 {
